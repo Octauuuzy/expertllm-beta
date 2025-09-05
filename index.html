@@ -1,0 +1,3402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpertLLM - AI-Powered Writing, Summarizing & Coding Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+      // MathJax Configuration
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script>
+      // Set the worker source for pdf.js
+      if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+      }
+    </script>
+    <style>
+        :root {
+          /* Primitive Color Tokens */
+          --color-white: rgba(255, 255, 255, 1);
+          --color-black: rgba(0, 0, 0, 1);
+          --color-cream-50: rgba(252, 252, 249, 1);
+          --color-cream-100: rgba(255, 255, 253, 1);
+          --color-gray-200: rgba(245, 245, 245, 1);
+          --color-gray-300: rgba(167, 169, 169, 1);
+          --color-gray-400: rgba(119, 124, 124, 1);
+          --color-slate-500: rgba(98, 108, 113, 1);
+          --color-brown-600: rgba(94, 82, 64, 1);
+          --color-charcoal-700: rgba(31, 33, 33, 1);
+          --color-charcoal-800: rgba(38, 40, 40, 1);
+          --color-slate-900: rgba(19, 52, 59, 1);
+          --color-teal-300: rgba(50, 184, 198, 1);
+          --color-teal-400: rgba(45, 166, 178, 1);
+          --color-teal-500: rgba(33, 128, 141, 1);
+          --color-teal-600: rgba(29, 116, 128, 1);
+          --color-teal-700: rgba(26, 104, 115, 1);
+          --color-teal-800: rgba(41, 150, 161, 1);
+          --color-red-400: rgba(255, 84, 89, 1);
+          --color-red-500: rgba(192, 21, 47, 1);
+          --color-orange-400: rgba(230, 129, 97, 1);
+          --color-orange-500: rgba(168, 75, 47, 1);
+
+          /* RGB versions for opacity control */
+          --color-brown-600-rgb: 94, 82, 64;
+          --color-teal-500-rgb: 33, 128, 141;
+          --color-slate-900-rgb: 19, 52, 59;
+          --color-slate-500-rgb: 98, 108, 113;
+          --color-red-500-rgb: 192, 21, 47;
+          --color-red-400-rgb: 255, 84, 89;
+          --color-orange-500-rgb: 168, 75, 47;
+          --color-orange-400-rgb: 230, 129, 97;
+
+          /* Background color tokens (Light Mode) */
+          --color-bg-1: rgba(59, 130, 246, 0.08); /* Light blue */
+          --color-bg-2: rgba(245, 158, 11, 0.08); /* Light yellow */
+          --color-bg-3: rgba(34, 197, 94, 0.08); /* Light green */
+          --color-bg-4: rgba(239, 68, 68, 0.08); /* Light red */
+          --color-bg-5: rgba(147, 51, 234, 0.08); /* Light purple */
+          --color-bg-6: rgba(249, 115, 22, 0.08); /* Light orange */
+          --color-bg-7: rgba(236, 72, 153, 0.08); /* Light pink */
+          --color-bg-8: rgba(6, 182, 212, 0.08); /* Light cyan */
+
+          /* Semantic Color Tokens (Light Mode) */
+          --color-background: var(--color-cream-50);
+          --color-surface: var(--color-cream-100);
+          --color-text: var(--color-slate-900);
+          --color-text-secondary: var(--color-slate-500);
+          --color-primary: var(--color-teal-500);
+          --color-primary-hover: var(--color-teal-600);
+          --color-primary-active: var(--color-teal-700);
+          --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+          --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+          --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+          --color-btn-primary-text: var(--color-cream-50);
+          --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-error: var(--color-red-500);
+          --color-success: var(--color-teal-500);
+          --color-warning: var(--color-orange-500);
+          --color-info: var(--color-slate-500);
+          --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+          --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+
+          /* Common style patterns */
+          --focus-ring: 0 0 0 3px var(--color-focus-ring);
+          --focus-outline: 2px solid var(--color-primary);
+          --status-bg-opacity: 0.15;
+          --status-border-opacity: 0.25;
+          --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+          --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+          /* RGB versions for opacity control */
+          --color-success-rgb: 33, 128, 141;
+          --color-error-rgb: 192, 21, 47;
+          --color-warning-rgb: 168, 75, 47;
+          --color-info-rgb: 98, 108, 113;
+
+          /* Typography */
+          --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system,
+            BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          --font-family-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo,
+            Monaco, Consolas, monospace;
+          --font-size-xs: 11px;
+          --font-size-sm: 12px;
+          --font-size-base: 14px;
+          --font-size-md: 14px;
+          --font-size-lg: 16px;
+          --font-size-xl: 18px;
+          --font-size-2xl: 20px;
+          --font-size-3xl: 24px;
+          --font-size-4xl: 30px;
+          --font-weight-normal: 400;
+          --font-weight-medium: 500;
+          --font-weight-semibold: 550;
+          --font-weight-bold: 600;
+          --line-height-tight: 1.2;
+          --line-height-normal: 1.5;
+          --letter-spacing-tight: -0.01em;
+
+          /* Spacing */
+          --space-0: 0;
+          --space-1: 1px;
+          --space-2: 2px;
+          --space-4: 4px;
+          --space-6: 6px;
+          --space-8: 8px;
+          --space-10: 10px;
+          --space-12: 12px;
+          --space-16: 16px;
+          --space-20: 20px;
+          --space-24: 24px;
+          --space-32: 32px;
+
+          /* Border Radius */
+          --radius-sm: 6px;
+          --radius-base: 8px;
+          --radius-md: 10px;
+          --radius-lg: 12px;
+          --radius-full: 9999px;
+
+          /* Shadows */
+          --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+          --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04),
+            0 2px 4px -1px rgba(0, 0, 0, 0.02);
+          --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04),
+            0 4px 6px -2px rgba(0, 0, 0, 0.02);
+          --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.15),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+
+          /* Animation */
+          --duration-fast: 150ms;
+          --duration-normal: 250ms;
+          --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+          /* Layout */
+          --container-sm: 640px;
+          --container-md: 768px;
+          --container-lg: 1024px;
+          --container-xl: 1280px;
+        }
+
+        /* Dark mode colors */
+        @media (prefers-color-scheme: dark) {
+          :root {
+            /* RGB versions for opacity control (Dark Mode) */
+            --color-gray-400-rgb: 119, 124, 124;
+            --color-teal-300-rgb: 50, 184, 198;
+            --color-gray-300-rgb: 167, 169, 169;
+            --color-gray-200-rgb: 245, 245, 245;
+
+            /* Background color tokens (Dark Mode) */
+            --color-bg-1: rgba(29, 78, 216, 0.15); /* Dark blue */
+            --color-bg-2: rgba(180, 83, 9, 0.15); /* Dark yellow */
+            --color-bg-3: rgba(21, 128, 61, 0.15); /* Dark green */
+            --color-bg-4: rgba(185, 28, 28, 0.15); /* Dark red */
+            --color-bg-5: rgba(107, 33, 168, 0.15); /* Dark purple */
+            --color-bg-6: rgba(194, 65, 12, 0.15); /* Dark orange */
+            --color-bg-7: rgba(190, 24, 93, 0.15); /* Dark pink */
+            --color-bg-8: rgba(8, 145, 178, 0.15); /* Dark cyan */
+            
+            /* Semantic Color Tokens (Dark Mode) */
+            --color-background: var(--color-charcoal-700);
+            --color-surface: var(--color-charcoal-800);
+            --color-text: var(--color-gray-200);
+            --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+            --color-primary: var(--color-teal-300);
+            --color-primary-hover: var(--color-teal-400);
+            --color-primary-active: var(--color-teal-800);
+            --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+            --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+            --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+            --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+            --color-error: var(--color-red-400);
+            --color-success: var(--color-teal-300);
+            --color-warning: var(--color-orange-400);
+            --color-info: var(--color-gray-300);
+            --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+            --color-btn-primary-text: var(--color-slate-900);
+            --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+            --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+            --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+            --button-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+            --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+            --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+
+            /* Common style patterns - updated for dark mode */
+            --focus-ring: 0 0 0 3px var(--color-focus-ring);
+            --focus-outline: 2px solid var(--color-primary);
+            --status-bg-opacity: 0.15;
+            --status-border-opacity: 0.25;
+            --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+            /* RGB versions for dark mode */
+            --color-success-rgb: var(--color-teal-300-rgb);
+            --color-error-rgb: var(--color-red-400-rgb);
+            --color-warning-rgb: var(--color-orange-400-rgb);
+            --color-info-rgb: var(--color-gray-300-rgb);
+          }
+        }
+
+        /* Data attribute for manual theme switching */
+        [data-color-scheme="dark"] {
+          /* RGB versions for opacity control (dark mode) */
+          --color-gray-400-rgb: 119, 124, 124;
+          --color-teal-300-rgb: 50, 184, 198;
+          --color-gray-300-rgb: 167, 169, 169;
+          --color-gray-200-rgb: 245, 245, 245;
+
+          /* Colorful background palette - Dark Mode */
+          --color-bg-1: rgba(29, 78, 216, 0.15); /* Dark blue */
+          --color-bg-2: rgba(180, 83, 9, 0.15); /* Dark yellow */
+          --color-bg-3: rgba(21, 128, 61, 0.15); /* Dark green */
+          --color-bg-4: rgba(185, 28, 28, 0.15); /* Dark red */
+          --color-bg-5: rgba(107, 33, 168, 0.15); /* Dark purple */
+          --color-bg-6: rgba(194, 65, 12, 0.15); /* Dark orange */
+          --color-bg-7: rgba(190, 24, 93, 0.15); /* Dark pink */
+          --color-bg-8: rgba(8, 145, 178, 0.15); /* Dark cyan */
+          
+          /* Semantic Color Tokens (Dark Mode) */
+          --color-background: var(--color-charcoal-700);
+          --color-surface: var(--color-charcoal-800);
+          --color-text: var(--color-gray-200);
+          --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+          --color-primary: var(--color-teal-300);
+          --color-primary-hover: var(--color-teal-400);
+          --color-primary-active: var(--color-teal-800);
+          --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+          --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+          --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+          --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+          --color-error: var(--color-red-400);
+          --color-success: var(--color-teal-300);
+          --color-warning: var(--color-orange-400);
+          --color-info: var(--color-gray-300);
+          --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+          --color-btn-primary-text: var(--color-slate-900);
+          --color-card-border: rgba(var(--color-gray-400-rgb), 0.15);
+          --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+          --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+          --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+          --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+
+          /* Common style patterns - updated for dark mode */
+          --focus-ring: 0 0 0 3px var(--color-focus-ring);
+          --focus-outline: 2px solid var(--color-primary);
+          --status-bg-opacity: 0.15;
+          --status-border-opacity: 0.25;
+          --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+          --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+          /* RGB versions for dark mode */
+          --color-success-rgb: var(--color-teal-300-rgb);
+          --color-error-rgb: var(--color-red-400-rgb);
+          --color-warning-rgb: var(--color-orange-400-rgb);
+          --color-info-rgb: var(--color-gray-300-rgb);
+        }
+
+        [data-color-scheme="light"] {
+          /* RGB versions for opacity control (light mode) */
+          --color-brown-600-rgb: 94, 82, 64;
+          --color-teal-500-rgb: 33, 128, 141;
+          --color-slate-900-rgb: 19, 52, 59;
+          
+          /* Semantic Color Tokens (Light Mode) */
+          --color-background: var(--color-cream-50);
+          --color-surface: var(--color-cream-100);
+          --color-text: var(--color-slate-900);
+          --color-text-secondary: var(--color-slate-500);
+          --color-primary: var(--color-teal-500);
+          --color-primary-hover: var(--color-teal-600);
+          --color-primary-active: var(--color-teal-700);
+          --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+          --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+          --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+          --color-btn-primary-text: var(--color-cream-50);
+          --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+          --color-error: var(--color-red-500);
+          --color-success: var(--color-teal-500);
+          --color-warning: var(--color-orange-500);
+          --color-info: var(--color-slate-500);
+          --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+
+          /* RGB versions for light mode */
+          --color-success-rgb: var(--color-teal-500-rgb);
+          --color-error-rgb: var(--color-red-500-rgb);
+          --color-warning-rgb: var(--color-orange-500-rgb);
+          --color-info-rgb: var(--color-slate-500-rgb);
+        }
+
+        /* Base styles */
+        html {
+          font-size: var(--font-size-base);
+          font-family: var(--font-family-base);
+          line-height: var(--line-height-normal);
+          color: var(--color-text);
+          background-color: var(--color-background);
+          -webkit-font-smoothing: antialiased;
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 0;
+        }
+
+        *,
+        *::before,
+        *::after {
+          box-sizing: inherit;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+          margin: 0;
+          font-weight: var(--font-weight-semibold);
+          line-height: var(--line-height-tight);
+          color: var(--color-text);
+          letter-spacing: var(--letter-spacing-tight);
+        }
+
+        h1 {
+          font-size: var(--font-size-4xl);
+        }
+        h2 {
+          font-size: var(--font-size-3xl);
+        }
+        h3 {
+          font-size: var(--font-size-2xl);
+        }
+        h4 {
+          font-size: var(--font-size-xl);
+        }
+        h5 {
+          font-size: var(--font-size-lg);
+        }
+        h6 {
+          font-size: var(--font-size-md);
+        }
+
+        p {
+          margin: 0 0 var(--space-16) 0;
+        }
+
+        a {
+          color: var(--color-primary);
+          text-decoration: none;
+          transition: color var(--duration-fast) var(--ease-standard);
+        }
+
+        a:hover {
+          color: var(--color-primary-hover);
+        }
+
+        code,
+        pre {
+          font-family: var(--font-family-mono);
+          font-size: calc(var(--font-size-base) * 0.95);
+          background-color: var(--color-secondary);
+          border-radius: var(--radius-sm);
+        }
+
+        code {
+          padding: var(--space-1) var(--space-4);
+        }
+
+        pre {
+          padding: var(--space-16);
+          margin: var(--space-16) 0;
+          overflow: auto;
+          border: 1px solid var(--color-border);
+        }
+
+        pre code {
+          background: none;
+          padding: 0;
+        }
+
+        /* Buttons */
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: var(--space-8) var(--space-16);
+          border-radius: var(--radius-base);
+          font-size: var(--font-size-base);
+          font-weight: 500;
+          line-height: 1.5;
+          cursor: pointer;
+          transition: all var(--duration-normal) var(--ease-standard);
+          border: none;
+          text-decoration: none;
+          position: relative;
+        }
+
+        .btn:focus-visible {
+          outline: none;
+          box-shadow: var(--focus-ring);
+        }
+
+        .btn--primary {
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+        }
+
+        .btn--primary:hover {
+          background: var(--color-primary-hover);
+        }
+
+        .btn--primary:active {
+          background: var(--color-primary-active);
+        }
+
+        .btn--secondary {
+          background: var(--color-secondary);
+          color: var(--color-text);
+        }
+
+        .btn--secondary:hover {
+          background: var(--color-secondary-hover);
+        }
+
+        .btn--secondary:active {
+          background: var(--color-secondary-active);
+        }
+
+        .btn--outline {
+          background: transparent;
+          border: 1px solid var(--color-border);
+          color: var(--color-text);
+        }
+
+        .btn--outline:hover {
+          background: var(--color-secondary);
+        }
+
+        .btn--sm {
+          padding: var(--space-4) var(--space-12);
+          font-size: var(--font-size-sm);
+          border-radius: var(--radius-sm);
+        }
+
+        .btn--lg {
+          padding: var(--space-10) var(--space-20);
+          font-size: var(--font-size-lg);
+          border-radius: var(--radius-md);
+        }
+
+        .btn--full-width {
+          width: 100%;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Form elements */
+        .form-control {
+          display: block;
+          width: 100%;
+          padding: var(--space-8) var(--space-12);
+          font-size: var(--font-size-md);
+          line-height: 1.5;
+          color: var(--color-text);
+          background-color: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-base);
+          transition: border-color var(--duration-fast) var(--ease-standard),
+            box-shadow var(--duration-fast) var(--ease-standard);
+        }
+
+        textarea.form-control {
+          font-family: var(--font-family-base);
+          font-size: var(--font-size-base);
+        }
+
+        select.form-control {
+          padding: var(--space-8) var(--space-12);
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+          background-image: var(--select-caret-light);
+          background-repeat: no-repeat;
+          background-position: right var(--space-12) center;
+          background-size: 16px;
+          padding-right: var(--space-32);
+        }
+
+        /* Add a dark mode specific caret */
+        @media (prefers-color-scheme: dark) {
+          select.form-control {
+            background-image: var(--select-caret-dark);
+          }
+        }
+
+        /* Also handle data-color-scheme */
+        [data-color-scheme="dark"] select.form-control {
+          background-image: var(--select-caret-dark);
+        }
+
+        [data-color-scheme="light"] select.form-control {
+          background-image: var(--select-caret-light);
+        }
+
+        .form-control:focus {
+          border-color: var(--color-primary);
+          outline: var(--focus-outline);
+        }
+
+        .form-label {
+          display: block;
+          margin-bottom: var(--space-8);
+          font-weight: var(--font-weight-medium);
+          font-size: var(--font-size-sm);
+        }
+
+        .form-group {
+          margin-bottom: var(--space-16);
+        }
+
+        /* Card component */
+        .card {
+          background-color: var(--color-surface);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--color-card-border);
+          box-shadow: var(--shadow-sm);
+          overflow: hidden;
+          transition: box-shadow var(--duration-normal) var(--ease-standard);
+        }
+
+        .card:hover {
+          box-shadow: var(--shadow-md);
+        }
+
+        .card__body {
+          padding: var(--space-16);
+        }
+
+        .card__header,
+        .card__footer {
+          padding: var(--space-16);
+          border-bottom: 1px solid var(--color-card-border-inner);
+        }
+
+        /* Status indicators - simplified with CSS variables */
+        .status {
+          display: inline-flex;
+          align-items: center;
+          padding: var(--space-6) var(--space-12);
+          border-radius: var(--radius-full);
+          font-weight: var(--font-weight-medium);
+          font-size: var(--font-size-sm);
+        }
+
+        .status--success {
+          background-color: rgba(
+            var(--color-success-rgb, 33, 128, 141),
+            var(--status-bg-opacity)
+          );
+          color: var(--color-success);
+          border: 1px solid
+            rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
+        }
+
+        .status--error {
+          background-color: rgba(
+            var(--color-error-rgb, 192, 21, 47),
+            var(--status-bg-opacity)
+          );
+          color: var(--color-error);
+          border: 1px solid
+            rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
+        }
+
+        .status--warning {
+          background-color: rgba(
+            var(--color-warning-rgb, 168, 75, 47),
+            var(--status-bg-opacity)
+          );
+          color: var(--color-warning);
+          border: 1px solid
+            rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
+        }
+
+        .status--info {
+          background-color: rgba(
+            var(--color-info-rgb, 98, 108, 113),
+            var(--status-bg-opacity)
+          );
+          color: var(--color-info);
+          border: 1px solid
+            rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
+        }
+
+        /* Container layout */
+        .container {
+          width: 100%;
+          margin-right: auto;
+          margin-left: auto;
+          padding-right: var(--space-16);
+          padding-left: var(--space-16);
+        }
+
+        @media (min-width: 640px) {
+          .container {
+            max-width: var(--container-sm);
+          }
+        }
+        @media (min-width: 768px) {
+          .container {
+            max-width: var(--container-md);
+          }
+        }
+        @media (min-width: 1024px) {
+          .container {
+            max-width: var(--container-lg);
+          }
+        }
+        @media (min-width: 1280px) {
+          .container {
+            max-width: var(--container-xl);
+          }
+        }
+
+        /* Utility classes */
+        .flex {
+          display: flex;
+        }
+        .flex-col {
+          flex-direction: column;
+        }
+        .items-center {
+          align-items: center;
+        }
+        .justify-center {
+          justify-content: center;
+        }
+        .justify-between {
+          justify-content: space-between;
+        }
+        .gap-4 {
+          gap: var(--space-4);
+        }
+        .gap-8 {
+          gap: var(--space-8);
+        }
+        .gap-16 {
+          gap: var(--space-16);
+        }
+
+        .m-0 {
+          margin: 0;
+        }
+        .mt-8 {
+          margin-top: var(--space-8);
+        }
+        .mb-8 {
+          margin-bottom: var(--space-8);
+        }
+        .mx-8 {
+          margin-left: var(--space-8);
+          margin-right: var(--space-8);
+        }
+        .my-8 {
+          margin-top: var(--space-8);
+          margin-bottom: var(--space-8);
+        }
+
+        .p-0 {
+          padding: 0;
+        }
+        .py-8 {
+          padding-top: var(--space-8);
+          padding-bottom: var(--space-8);
+        }
+        .px-8 {
+          padding-left: var(--space-8);
+          padding-right: var(--space-8);
+        }
+        .py-16 {
+          padding-top: var(--space-16);
+          padding-bottom: var(--space-16);
+        }
+        .px-16 {
+          padding-left: var(--space-16);
+          padding-right: var(--space-16);
+        }
+
+        .block {
+          display: block;
+        }
+        .hidden {
+          display: none;
+        }
+
+        /* Accessibility */
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
+
+        :focus-visible {
+          outline: var(--focus-outline);
+          outline-offset: 2px;
+        }
+
+        /* Dark mode specifics */
+        [data-color-scheme="dark"] .btn--outline {
+          border: 1px solid var(--color-border-secondary);
+        }
+        
+        /* START: Table styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--space-16) 0;
+            font-size: var(--font-size-sm);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            overflow: hidden;
+        }
+        .data-table th,
+        .data-table td {
+            padding: var(--space-8) var(--space-12);
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .data-table th {
+            background-color: var(--color-secondary);
+            font-weight: var(--font-weight-semibold);
+        }
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .data-table tbody tr:hover {
+            background-color: var(--color-secondary-hover);
+        }
+        /* END: Table styles */
+
+        @font-face {
+          font-family: 'FKGroteskNeue';
+          src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2')
+            format('woff2');
+        }
+
+        /* END PERPLEXITY DESIGN SYSTEM */
+        /* Landing Page Styles */
+        .landing-page {
+          min-height: 100vh;
+          background: linear-gradient(135deg, var(--color-bg-1), var(--color-bg-8));
+        }
+
+        .landing-header {
+          padding: var(--space-20) 0;
+          background: var(--color-surface);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .landing-header .container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .logo h1 {
+          color: var(--color-primary);
+          font-size: var(--font-size-2xl);
+          display: flex;
+          align-items: center;
+          gap: var(--space-12);
+        }
+
+        .hero {
+          padding: var(--space-32) 0;
+          text-align: center;
+        }
+
+        .hero h2 {
+          font-size: var(--font-size-4xl);
+          margin-bottom: var(--space-16);
+          color: var(--color-text);
+        }
+
+        .hero-subtitle {
+          font-size: var(--font-size-xl);
+          color: var(--color-text-secondary);
+          margin-bottom: var(--space-32);
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .features {
+          padding: var(--space-32) 0;
+          background: var(--color-surface);
+        }
+
+        .features h3 {
+          text-align: center;
+          margin-bottom: var(--space-32);
+          font-size: var(--font-size-3xl);
+        }
+
+        .feature-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: var(--space-24);
+        }
+
+        .feature-card {
+          background: var(--color-background);
+          padding: var(--space-24);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--color-card-border);
+          box-shadow: var(--shadow-sm);
+          transition: transform var(--duration-normal) var(--ease-standard);
+        }
+
+        .feature-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-lg);
+        }
+
+        .feature-icon {
+          width: 60px;
+          height: 60px;
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+          border-radius: var(--radius-full);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: var(--font-size-2xl);
+          margin-bottom: var(--space-16);
+        }
+
+        .feature-card h4 {
+          margin-bottom: var(--space-12);
+          color: var(--color-text);
+        }
+
+        .feature-card p {
+          color: var(--color-text-secondary);
+          margin-bottom: var(--space-16);
+        }
+
+        .feature-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .feature-list li {
+          padding: var(--space-4) 0;
+          color: var(--color-text-secondary);
+          font-size: var(--font-size-sm);
+          position: relative;
+          padding-left: var(--space-16);
+        }
+
+        .feature-list li:before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          color: var(--color-primary);
+          font-weight: var(--font-weight-bold);
+        }
+
+        .gemini-integration {
+          padding: var(--space-32) 0;
+          background: var(--color-bg-2);
+        }
+
+        .gemini-integration h3 {
+          text-align: center;
+          margin-bottom: var(--space-32);
+          font-size: var(--font-size-3xl);
+        }
+
+        .integration-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: var(--space-24);
+          max-width: 600px;
+          margin: 0 auto;
+        }
+
+        .integration-card {
+          background: var(--color-surface);
+          padding: var(--space-20);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--color-card-border);
+          text-align: center;
+        }
+
+        .integration-card h4 {
+          margin-bottom: var(--space-16);
+          color: var(--color-primary);
+        }
+
+        .integration-card ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .integration-card li {
+          padding: var(--space-4) 0;
+          color: var(--color-text-secondary);
+          font-size: var(--font-size-sm);
+        }
+
+        /* Chat Interface Styles */
+        .chat-interface {
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+          background: var(--color-background);
+        }
+
+        .chat-header {
+          background: var(--color-surface);
+          border-bottom: 1px solid var(--color-border);
+          padding: var(--space-12) var(--space-20);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-shrink: 0;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: var(--space-12);
+        }
+
+        .sidebar-toggle {
+          background: none;
+          border: none;
+          color: var(--color-text-secondary);
+          cursor: pointer;
+          padding: var(--space-8);
+          border-radius: var(--radius-sm);
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .sidebar-toggle:hover {
+          background: var(--color-secondary);
+        }
+
+        .logo-small {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          font-weight: var(--font-weight-semibold);
+          color: var(--color-primary);
+        }
+
+        .header-center {
+          display: flex;
+          align-items: center;
+          gap: var(--space-16);
+        }
+
+        .model-selector select {
+          min-width: 200px;
+        }
+
+        .extend-thinking {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+        }
+
+        .toggle-label {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          cursor: pointer;
+          font-size: var(--font-size-sm);
+          color: var(--color-text-secondary);
+        }
+        
+        .toggle-label.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .toggle-slider {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          background: var(--color-secondary);
+          border-radius: var(--radius-full);
+          transition: background-color var(--duration-normal) var(--ease-standard);
+        }
+
+        .toggle-slider:before {
+          content: '';
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          left: 2px;
+          top: 2px;
+          background: var(--color-surface);
+          border-radius: var(--radius-full);
+          transition: transform var(--duration-normal) var(--ease-standard);
+        }
+
+        input[type="checkbox"]:checked + .toggle-slider {
+          background: var(--color-primary);
+        }
+
+        input[type="checkbox"]:checked + .toggle-slider:before {
+          transform: translateX(20px);
+        }
+        
+        input[type="checkbox"]:disabled + .toggle-slider {
+          background: var(--color-border);
+        }
+
+        input[type="checkbox"] {
+          display: none;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: var(--space-16);
+        }
+
+        .usage-counter {
+          text-align: center;
+        }
+
+        .usage-counter span {
+          font-weight: var(--font-weight-bold);
+          color: var(--color-text);
+        }
+
+        .usage-counter small {
+          display: block;
+          color: var(--color-text-secondary);
+          font-size: var(--font-size-xs);
+        }
+
+        .chat-layout {
+          display: flex;
+          flex: 1;
+          overflow: hidden;
+          position: relative; /* Needed for positioning the sidebar */
+        }
+
+        .sidebar {
+          width: 280px;
+          flex-shrink: 0; 
+          background: var(--color-surface);
+          border-right: 1px solid var(--color-border);
+          display: flex;
+          flex-direction: column;
+          transition: transform var(--duration-normal) var(--ease-standard);
+        }
+
+        .sidebar-header {
+          padding: var(--space-16);
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .chat-history {
+          flex: 1;
+          padding: var(--space-16);
+          overflow-y: auto;
+        }
+
+        .chat-history h4 {
+          margin-bottom: var(--space-12);
+          color: var(--color-text-secondary);
+          font-size: var(--font-size-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .chat-history-list {
+          margin-bottom: var(--space-16);
+        }
+
+        .chat-history-item {
+          padding: var(--space-8) var(--space-12);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          margin-bottom: var(--space-4);
+          background: transparent;
+          border: none;
+          width: 100%;
+          text-align: left;
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .chat-history-item:hover {
+          background: var(--color-secondary);
+        }
+
+        .chat-history-item.active {
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+        }
+
+        .chat-history-title {
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium);
+          margin-bottom: var(--space-2);
+        }
+
+        .chat-history-time {
+          font-size: var(--font-size-xs);
+          opacity: 0.7;
+        }
+
+        .chat-main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .messages-area {
+          flex: 1;
+          padding: var(--space-20);
+          overflow-y: auto;
+          background: var(--color-background);
+        }
+
+        .welcome-message {
+          text-align: center;
+          max-width: 600px;
+          margin: var(--space-32) auto;
+        }
+
+        .welcome-icon {
+          width: 80px;
+          height: 80px;
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+          border-radius: var(--radius-full);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: var(--font-size-3xl);
+          margin: 0 auto var(--space-20);
+        }
+
+        .welcome-message h3 {
+          margin-bottom: var(--space-12);
+          color: var(--color-text);
+        }
+
+        .welcome-message p {
+          color: var(--color-text-secondary);
+          margin-bottom: var(--space-24);
+        }
+
+        .capabilities-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: var(--space-16);
+          margin-top: var(--space-24);
+        }
+
+        .capability-item {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          padding: var(--space-12);
+          background: var(--color-surface);
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--color-card-border);
+        }
+
+        .capability-item i {
+          color: var(--color-primary);
+        }
+
+        .capability-item span {
+          font-size: var(--font-size-sm);
+          color: var(--color-text-secondary);
+        }
+
+        .message {
+          margin-bottom: var(--space-20);
+          max-width: 800px;
+        }
+
+        .message.user {
+          margin-left: auto;
+        }
+
+        .message.assistant {
+          margin-right: auto;
+        }
+
+        .message-header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          margin-bottom: var(--space-8);
+        }
+        
+        .thinking-time {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            font-style: italic;
+            margin-left: var(--space-4);
+        }
+
+        .message-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: var(--radius-full);
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: var(--font-size-sm);
+        }
+
+        .message.user .message-avatar {
+          background: var(--color-secondary);
+          color: var(--color-text);
+        }
+
+        .message-author {
+          font-weight: var(--font-weight-medium);
+          font-size: var(--font-size-sm);
+          color: var(--color-text);
+        }
+
+        .message-content {
+          background: var(--color-surface);
+          padding: var(--space-16);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--color-card-border);
+          line-height: var(--line-height-normal);
+        }
+        
+        /* Give assistant messages with no content a min-height */
+        .message.assistant .message-content:empty {
+            min-height: 50px;
+        }
+
+        .message.user .message-content {
+          background: var(--color-primary);
+          color: var(--color-btn-primary-text);
+        }
+
+        .uploaded-files-display {
+          margin-bottom: var(--space-12);
+        }
+
+        .uploaded-file-item {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          padding: var(--space-8);
+          background: var(--color-bg-3);
+          border-radius: var(--radius-sm);
+          margin-bottom: var(--space-4);
+        }
+
+        .uploaded-file-item i {
+          color: var(--color-success);
+        }
+
+        .input-area {
+          padding: var(--space-16) var(--space-20);
+          background: var(--color-surface);
+          border-top: 1px solid var(--color-border);
+          position: relative; /* For positioning the mode popup */
+        }
+        
+        /* START: Input Area Pop-up Styles */
+        .input-area-controls {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          margin-bottom: var(--space-8);
+        }
+
+        .mode-popup-container {
+            position: relative;
+        }
+        
+        .mode-popup-btn {
+          background: var(--color-secondary);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-sm);
+          padding: var(--space-8);
+          cursor: pointer;
+          color: var(--color-text-secondary);
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+        
+        .mode-popup-btn:hover {
+            background: var(--color-secondary-hover);
+        }
+
+        .mode-popup {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            box-shadow: var(--shadow-lg);
+            z-index: 10;
+            margin-bottom: var(--space-8);
+            width: 250px; /* Or adjust as needed */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity var(--duration-fast) ease-in-out, transform var(--duration-fast) ease-in-out;
+            pointer-events: none;
+        }
+
+        .mode-popup:not(.hidden) {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        .mode-popup-header {
+            padding: var(--space-8) var(--space-12);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-secondary);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .mode-option {
+            padding: var(--space-10) var(--space-12);
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: var(--space-10);
+            font-size: var(--font-size-sm);
+            color: var(--color-text);
+            text-align: left;
+            width: 100%;
+            transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .mode-option i {
+            width: 18px;
+            text-align: center;
+            color: var(--color-text-secondary);
+        }
+
+        .mode-option:hover {
+            background: var(--color-secondary);
+        }
+
+        .mode-option.active {
+            color: var(--color-primary);
+            background: var(--color-bg-1);
+        }
+        .mode-option.active i {
+            color: var(--color-primary);
+        }
+        /* END: Input Area Pop-up Styles */
+
+
+        .file-upload-section {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+          margin-bottom: var(--space-8);
+        }
+
+        .file-upload-btn {
+          background: var(--color-secondary);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-sm);
+          padding: var(--space-8);
+          cursor: pointer;
+          color: var(--color-text-secondary);
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .file-upload-btn:hover {
+          background: var(--color-secondary-hover);
+        }
+
+        .file-upload-btn.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .uploaded-files {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-8);
+        }
+
+        .uploaded-file {
+          display: flex;
+          align-items: center;
+          gap: var(--space-4);
+          padding: var(--space-4) var(--space-8);
+          background: var(--color-bg-3);
+          border-radius: var(--radius-sm);
+          font-size: var(--font-size-xs);
+        }
+
+        .uploaded-file .remove-file {
+          background: none;
+          border: none;
+          color: var(--color-error);
+          cursor: pointer;
+          padding: 0;
+          margin-left: var(--space-4);
+        }
+
+        .input-container {
+          background: var(--color-background);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          overflow: hidden;
+        }
+
+        .input-container:focus-within {
+          border-color: var(--color-primary);
+          box-shadow: var(--focus-ring);
+        }
+
+        #messageInput {
+          width: 100%;
+          border: none;
+          background: none;
+          padding: var(--space-16);
+          font-size: var(--font-size-base);
+          color: var(--color-text);
+          resize: none;
+          min-height: 60px;
+          max-height: 200px;
+          font-family: var(--font-family-base);
+        }
+
+        #messageInput:focus {
+          outline: none;
+        }
+
+        .input-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--space-8) var(--space-16);
+          background: var(--color-surface);
+          border-top: 1px solid var(--color-border);
+        }
+
+        .word-counter {
+          font-size: var(--font-size-xs);
+          color: var(--color-text-secondary);
+        }
+
+        .word-counter.warning {
+          color: var(--color-warning);
+        }
+
+        .word-counter.error {
+          color: var(--color-error);
+        }
+
+        .send-button {
+          background: var(--color-primary);
+          border: none;
+          border-radius: var(--radius-full);
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: var(--color-btn-primary-text);
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .send-button:hover:not(:disabled) {
+          background: var(--color-primary-hover);
+        }
+
+        .send-button:disabled {
+          background: var(--color-secondary);
+          color: var(--color-text-secondary);
+          cursor: not-allowed;
+        }
+
+        .loading-message {
+          display: flex;
+          align-items: center;
+          gap: var(--space-8);
+        }
+
+        .loading-dots {
+          display: flex;
+          gap: var(--space-4);
+        }
+
+        .loading-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: var(--radius-full);
+          background: var(--color-primary);
+          animation: loadingPulse 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) {
+          animation-delay: -0.32s;
+        }
+
+        .loading-dot:nth-child(2) {
+          animation-delay: -0.16s;
+        }
+
+        @keyframes loadingPulse {
+          0%, 80%, 100% {
+            transform: scale(0);
+            opacity: 0.5;
+          }
+          40% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        /* Modal Styles */
+        .modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal.hidden {
+          display: none;
+        }
+
+        .modal-content {
+          background: var(--color-surface);
+          border-radius: var(--radius-lg);
+          max-width: 600px;
+          max-height: 80vh;
+          width: 90%;
+          overflow: hidden;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--space-16);
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: var(--font-size-2xl);
+          cursor: pointer;
+          color: var(--color-text-secondary);
+          padding: 0;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-sm);
+        }
+
+        .modal-close:hover {
+          background: var(--color-secondary);
+        }
+
+        .modal-body {
+          padding: var(--space-16);
+          max-height: 60vh;
+          overflow-y: auto;
+        }
+        
+        .code-block-container {
+            background-color: var(--color-charcoal-800);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            margin: var(--space-16) 0;
+            overflow: hidden;
+        }
+
+        .message-text {
+            line-height: var(--line-height-normal);
+            overflow-wrap: break-word; /* Prevents long strings from overflowing */
+            word-break: break-word;   /* Ensures words break to wrap */
+        }
+        
+        .generated-image {
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            margin-top: var(--space-8);
+        }
+
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0,0,0,0.2);
+            padding: var(--space-8) var(--space-12);
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+        }
+
+        [data-color-scheme="light"] .code-block-header,
+        :root:not([data-color-scheme="dark"]) .code-block-header {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .code-block-header span {
+            text-transform: lowercase;
+            font-family: var(--font-family-mono);
+        }
+
+        .code-block-header button {
+            background: none;
+            border: 1px solid transparent;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            font-size: var(--font-size-xs);
+            transition: all var(--duration-fast);
+        }
+
+        .code-block-header button:hover {
+            background-color: var(--color-secondary);
+            color: var(--color-text);
+        }
+
+        .code-block-container pre {
+            margin: 0;
+            padding: var(--space-16);
+            background: transparent !important; /* Override base pre styles */
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: var(--font-size-sm);
+        }
+
+        .code-block-container code {
+            background: transparent !important; /* Override base code styles */
+            padding: 0;
+            color: var(--color-gray-200);
+        }
+
+        /* START: Search Process & Sources UI Styles */
+        .search-process-container {
+            padding: var(--space-4);
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+        }
+
+        .search-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-8);
+            margin-bottom: var(--space-16);
+            transition: opacity 0.3s ease-in-out;
+        }
+        .search-status i {
+            color: var(--color-primary);
+        }
+
+        .search-queries-container,
+        .source-review-container {
+            margin-bottom: var(--space-16);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-queries-container h4,
+        .source-review-container h4 {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text);
+            margin-bottom: var(--space-8);
+            padding-left: var(--space-4);
+        }
+
+        .queries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-8);
+        }
+
+        .query-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-6);
+            background-color: var(--color-secondary);
+            padding: var(--space-4) var(--space-10);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+        }
+        .query-pill i {
+            color: var(--color-text-secondary);
+        }
+        
+        .sources-container {
+            margin-top: var(--space-20);
+            border-top: 1px solid var(--color-border);
+            padding-top: var(--space-16);
+        }
+        
+        .sources-container h4 {
+             font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-8);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .sources-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            padding: var(--space-6) var(--space-4);
+            border-radius: var(--radius-sm);
+            transition: background-color var(--duration-fast);
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--color-text);
+        }
+
+        .source-item:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .source-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: var(--radius-sm);
+            margin-right: var(--space-8);
+            flex-shrink: 0;
+            background-color: var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--color-text-secondary);
+        }
+        .source-favicon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: var(--radius-sm);
+        }
+
+        .source-info {
+            flex-grow: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: var(--font-size-sm);
+        }
+
+        .source-domain {
+            margin-left: var(--space-16);
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-xs);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .final-answer-container {
+           /* Populated with final response */
+        }
+        /* END: Search Process & Sources UI Styles */
+
+        .sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99; /* Below sidebar */
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar-backdrop:not(.hidden) {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            z-index: 100;
+            box-shadow: var(--shadow-lg);
+            transform: translateX(-100%);
+          }
+
+          .sidebar:not(.hidden) {
+            transform: translateX(0);
+          }
+          
+          .chat-header {
+              flex-wrap: wrap;
+              gap: var(--space-12);
+              padding: var(--space-12);
+          }
+          .header-center {
+              order: 3; /* Move to a new line */
+              width: 100%;
+              flex-direction: row;
+              justify-content: space-around;
+              gap: var(--space-8);
+              flex-wrap: wrap;
+          }
+          .header-left, .header-right {
+              flex: 1; /* Allow them to grow and fill space */
+          }
+          .header-right {
+              justify-content: flex-end; /* Align right content */
+          }
+          
+          .model-selector select {
+            min-width: 150px;
+          }
+          
+          .feature-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .hero h2 {
+            font-size: var(--font-size-3xl);
+          }
+          
+          .capabilities-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+    </style>
+</head>
+<body>
+    <div id="landingPage" class="landing-page">
+        <header class="landing-header">
+            <div class="container">
+                <div class="logo">
+                    <h1><i class="fas fa-brain"></i> ExpertLLM</h1>
+                </div>
+                <nav>
+                    <button class="btn btn--primary" onclick="showChatInterface()">Try Demo</button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="landing-main">
+            <section class="hero">
+                <div class="container">
+                    <h2>Your Universal AI-Powered Assistant</h2>
+                    <p class="hero-subtitle">Harness the power of cutting-edge AI to enhance your productivity across any task or query.</p>
+                    <button class="btn btn--primary btn--lg" onclick="showChatInterface()">Try Demo</button>
+                </div>
+            </section>
+
+            <section class="features">
+                <div class="container">
+                    <h3>Two Powerful Modes</h3>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <h4>General Mode</h4>
+                            <p>An all-purpose AI that leverages the best models from Google and Deepseek for any task you can imagine.</p>
+                            <ul class="feature-list">
+                                <li>Access to top-tier AI models</li>
+                                <li>Largest context window for complex tasks</li>
+                                <li>Creative content generation</li>
+                                <li>In-depth document analysis</li>
+                                <li>Advanced coding and technical help</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-search-plus"></i>
+                            </div>
+                            <h4>Fact Checker Mode</h4>
+                            <p>Performs a robust, multi-step web search to gather, verify, and synthesize information for accurate, evidence-based answers.</p>
+                            <ul class="feature-list">
+                                <li>Three-step verification search process</li>
+                                <li>Synthesizes data from multiple sources</li>
+                                <li>Ideal for research and complex questions</li>
+                                <li>Provides comprehensive, structured answers</li>
+                                <li>Always-on web access for up-to-date info</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="gemini-integration">
+                <div class="container">
+                    <h3>Powered by Leading AI Models</h3>
+                    <div class="integration-grid">
+                         <div class="integration-card">
+                            <h4>Google Gemini 2.5</h4>
+                            <ul>
+                                <li>Fast & efficient</li>
+                                <li>Multi-modal capabilities</li>
+                                <li>Strong reasoning skills</li>
+                            </ul>
+                        </div>
+                        <div class="integration-card">
+                            <h4>DeepSeek V3.1</h4>
+                            <ul>
+                                <li>Advanced coding</li>
+                                <li>Excellent multilingual support</li>
+                                <li>Large context window</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="chatInterface" class="chat-interface hidden">
+        <header class="chat-header">
+            <div class="header-left">
+                <button class="sidebar-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-small">
+                    <i class="fas fa-brain"></i>
+                    <span>ExpertLLM</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="model-selector">
+                    <select id="modelSelect" class="form-control">
+                        </select>
+                </div>
+                <div class="extend-thinking">
+                     <label class="toggle-label" id="extendThinkingLabel">
+                        <input type="checkbox" id="extendThinking">
+                        <span class="toggle-slider"></span>
+                        Extend Thinking
+                    </label>
+                </div>
+                <div class="extend-thinking">
+                    <label class="toggle-label" id="webSearchLabel">
+                        <input type="checkbox" id="webSearchToggle">
+                        <span class="toggle-slider"></span>
+                        Web Search
+                    </label>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="usage-counter">
+                    <span id="usageDisplay">.../...</span>
+                    <small>messages today</small>
+                </div>
+                <button class="btn btn--outline btn--sm" onclick="showLandingPage()">
+                    <i class="fas fa-home"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="chat-layout">
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <button class="btn btn--primary btn--full-width" onclick="newChat()">
+                        <i class="fas fa-plus"></i> New Chat
+                    </button>
+                </div>
+                <div class="chat-history">
+                    <h4>Chat History</h4>
+                    <div id="chatHistoryList" class="chat-history-list">
+                        </div>
+                    <button class="btn btn--outline btn--sm btn--full-width" onclick="clearHistory()">
+                        <i class="fas fa-trash"></i> Clear History
+                    </button>
+                </div>
+            </aside>
+
+            <main class="chat-main">
+                <div class="chat-main-header" style="padding: var(--space-8) var(--space-16); border-bottom: 1px solid var(--color-border); background: var(--color-surface);">
+                    <h3 id="currentModeHeader" style="font-size: var(--font-size-lg); display: flex; align-items: center; gap: var(--space-8);">
+                       <i class="fas fa-comments"></i> <span>General</span>
+                    </h3>
+                </div>
+
+                <div id="messagesArea" class="messages-area">
+                    <div class="welcome-message">
+                        <div class="welcome-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <h3>Welcome to ExpertLLM General Mode</h3>
+                        <p>I'm here to help you with any task. Upload files or start typing to begin!</p>
+                        <div class="capabilities-grid">
+                            <div class="capability-item">
+                                <i class="fas fa-book"></i>
+                                <span>Creative storytelling</span>
+                            </div>
+                            <div class="capability-item">
+                                <i class="fas fa-newspaper"></i>
+                                <span>Essay & article writing</span>
+                            </div>
+                            <div class="capability-item">
+                                <i class="fas fa-bullhorn"></i>
+                                <span>Marketing content</span>
+                            </div>
+                            <div class="capability-item">
+                                <i class="fas fa-spell-check"></i>
+                                <span>Grammar improvement</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-area-controls">
+                        <div class="mode-popup-container">
+                             <button id="modePopupBtn" class="mode-popup-btn">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <div id="modePopup" class="mode-popup hidden">
+                                <div class="mode-popup-header">Select Mode</div>
+                                <button class="mode-option active" data-section="general">
+                                    <i class="fas fa-comments"></i> General
+                                </button>
+                                <button class="mode-option" data-section="fact-checker">
+                                    <i class="fas fa-search-plus"></i> Fact Checker
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.txt,.docx,.pdf" style="display: none;">
+                        <button id="fileUploadBtn" class="file-upload-btn" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <div id="uploadedFiles" class="uploaded-files"></div>
+                    </div>
+                    <div class="input-container">
+                        <textarea id="messageInput" placeholder="Type your message here..." rows="1"></textarea>
+                        <div class="input-footer">
+                            <div class="word-counter">
+                                <span id="wordCount">0</span>/<span id="wordLimit">32000</span> words
+                            </div>
+                            <button id="sendButton" class="send-button" onclick="sendMessage()" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <div id="sidebarBackdrop" class="sidebar-backdrop hidden" onclick="toggleSidebar()"></div>
+    </div>
+
+    <div id="fileModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>File Preview</h3>
+                <button class="modal-close" onclick="closeFileModal()">&times;</button>
+            </div>
+            <div id="modalBody" class="modal-body">
+                </div>
+        </div>
+    </div>
+    <script>
+        // -------------------------------------------------------------------
+        // START: UNIFIED API CONFIGURATION
+        // -------------------------------------------------------------------
+        
+        // This is the ONLY section you need to edit to add or change models.
+        const API_CONFIG = {
+            google: {
+                // ❗️ IMPORTANT: Add your Google AI API Keys here. The system will try them in order.
+                apiKeys: [
+                    "AIzaSyBn1oivXFNBrB3-pjE1msJ3okOvJdmDCJI", // Key 1
+                    "AIzaSyCMrUkqxXc_F0ahn0jCDMQSfR53JYn7bN8", // Key 2 (failover)
+                    "AIzaSyCzGwz_e1m0kiIyrEGbw9I3Cb05O39P-F0", // Key 3 (failover)
+                    "AIzaSyB7bP-iBUfrxQA8LDwoHyIBUJErQ2VF3SY"  // Key 4 (failover)
+                ],
+            },
+            openrouter: {
+                apiKey: "AIzaSyCZFWeQIgKso9njCXZAcvdis", // ❗️ IMPORTANT: Replace with your OpenRouter API Key
+                apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+            },
+            google_search: {
+                // ❗️ IMPORTANT: Add your Google Search API Keys and corresponding Search Engine IDs (CX) here.
+                keys: [
+                    { apiKey: "AIzaSyDbdmWIPyec7ZJ64o69rcxioOYrUnaTzY8", cx: "c43fe109b43db48f4" }, // Key set 1
+                    { apiKey: "AIzaSyBjWB7AEN7PrcfXOOWRU_z7wjHetcr91jc", cx: "c43fe109b43db48f4" }, // Key set 2 (failover)
+                    { apiKey: "AIzaSyCU_K3U8h9sX-kkN7sTG8-pGspKSqwRwFo", cx: "c43fe109b43db48f4" }, // Key set 3 (failover)
+                    { apiKey: "AIzaSyBOXr9gMr_DAT9DFQhuSSOoydBVsDFRmYw", cx: "c43fe109b43db48f4" }  // Key set 4 (failover)
+                ]
+            }
+        };
+
+        // ❗️❗️❗️ IMPORTANT: REPLACE WITH YOUR VPS IP ADDRESS or a CORS proxy URL ❗️❗️❗️
+        const VPS_FETCHER_URL = "https://fectherjs.vercel.app/fetch-content";
+
+        // Adjustable number of sources to fetch per search query
+        const RESULTS_PER_QUERY = 10;
+
+
+        // Model configurations - Link models to their providers here
+        const models = {
+            // Google Models
+            flash: {
+                id: "flash",
+                provider: "google",
+                name: "Gemini 2.5 Flash (Free)",
+                inputLimit: 32000,
+                outputLimit: 256000,
+                dailyLimit: 99999,
+                googleModelName: "gemini-2.5-flash",
+            },
+            pro: {
+                id: "pro",
+                provider: "google",
+                name: "Gemini 2.5 Pro (Max)",
+                inputLimit: 32000,
+                outputLimit: 256000,
+                dailyLimit: 6000,
+                googleModelName: "gemini-2.5-pro",
+            },
+            // OpenRouter Model (DeepSeek)
+            deepseek: {
+                id: "deepseek",
+                provider: "openrouter",
+                name: "DeepSeek V3.1 (via OpenRouter)",
+                inputLimit: 32000, 
+                outputLimit: 4096,
+                dailyLimit: 10000, 
+                openRouterModelId: "deepseek/deepseek-chat-v3.1:free", // The model ID from OpenRouter
+            }
+        };
+
+        // Helper functions to get API URLs
+        function getGoogleTextApiUrl(modelName, apiKey) {
+            return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        }
+        
+        // -------------------------------------------------------------------
+        // END: UNIFIED API CONFIGURATION
+        // -------------------------------------------------------------------
+
+        // Application State
+        const appState = {
+            currentModel: 'flash', // Default model
+            currentSection: 'general',
+            extendThinking: false,
+            webSearchEnabled: false, 
+            currentChatId: null,
+            chats: [],
+            usage: {
+                // Usage will be dynamically populated based on models object
+            },
+            uploadedFiles: [] // This will now store { file, name, size, type, content }
+        };
+
+        // Section configurations
+        const sections = {
+            general: {
+                id: "general",
+                name: "General",
+                description: "an all-purpose AI that leverages the best models from Google and Deepseek for any task",
+                fileUpload: true,
+                icon: "fas fa-comments",
+                capabilities: [
+                    "Access to top-tier AI models",
+                    "Largest context window",
+                    "Creative content generation",
+                    "Advanced coding & technical help"
+                ]
+            },
+            'fact-checker': {
+                id: "fact-checker",
+                name: "Fact Checker",
+                description: "Performs a robust, multi-step web search to gather, verify, and synthesize information for accurate, evidence-based answers.",
+                fileUpload: false,
+                icon: "fas fa-search-plus",
+                capabilities: [
+                    "Three-step verification search",
+                    "Multi-source synthesis",
+                    "Evidence-based answers",
+                    "Complex question investigation"
+                ]
+            }
+        };
+
+
+        // Global functions exposed for HTML onclick handlers
+        window.showLandingPage = function() {
+            try {
+                document.getElementById('landingPage').classList.remove('hidden');
+                document.getElementById('chatInterface').classList.add('hidden');
+            } catch (error) {
+                console.error('Error showing landing page:', error);
+            }
+        };
+
+        window.showChatInterface = function() {
+            try {
+                document.getElementById('landingPage').classList.add('hidden');
+                document.getElementById('chatInterface').classList.remove('hidden');
+                if (!appState.currentChatId) newChat();
+                updateUsageDisplay();
+            } catch (error) {
+                console.error('Error showing chat interface:', error);
+            }
+        };
+        
+        window.toggleSidebar = function() {
+            try {
+                const sidebar = document.getElementById('sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                if (sidebar) {
+                    const isClosing = !sidebar.classList.contains('hidden');
+                    sidebar.classList.toggle('hidden', isClosing);
+                    if (backdrop && window.innerWidth <= 768) {
+                        backdrop.classList.toggle('hidden', isClosing);
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling sidebar:', error);
+            }
+        };
+
+        window.sendMessage = async function() {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            const messageText = input.value.trim();
+            if (!messageText && appState.uploadedFiles.length === 0) return;
+
+            const usage = appState.usage[appState.currentModel];
+            const dailyLimit = models[appState.currentModel].dailyLimit;
+            if (usage.count >= dailyLimit) {
+                alert(`Daily limit reached for ${models[appState.currentModel].name}.`);
+                return;
+            }
+
+            if (!appState.currentChatId) newChat();
+            
+            const filesForMessage = JSON.parse(JSON.stringify(appState.uploadedFiles));
+
+            const userMessage = {
+                id: generateId(),
+                role: 'user',
+                content: messageText,
+                files: filesForMessage,
+                timestamp: new Date().toISOString()
+            };
+
+            const currentChat = appState.chats.find(chat => chat.id === appState.currentChatId);
+            if(currentChat) {
+                currentChat.messages.push(userMessage);
+                currentChat.lastMessage = new Date().toISOString();
+            }
+
+            appState.usage[appState.currentModel].count++;
+            displayMessage(userMessage);
+            input.value = '';
+            appState.uploadedFiles = [];
+            updateUploadedFilesDisplay();
+            autoResize(input);
+            updateUI();
+            saveState();
+            scrollToBottom();
+            
+            const assistantMessageId = generateId();
+            const placeholderEl = displayMessage({
+                id: assistantMessageId,
+                role: 'assistant',
+                timestamp: new Date().toISOString()
+            });
+
+            const startTime = performance.now();
+
+            try {
+                const aiResponse = await generateAIResponse(userMessage, placeholderEl);
+                const endTime = performance.now();
+                const thinkingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+                const finalAssistantMessage = {
+                    id: assistantMessageId,
+                    role: 'assistant',
+                    timestamp: new Date().toISOString(),
+                    thinkingTime: thinkingTime
+                };
+                
+                if (aiResponse.isError) {
+                    finalAssistantMessage.content = aiResponse.data;
+                } else {
+                    finalAssistantMessage.content = aiResponse.data;
+                    finalAssistantMessage.sources = aiResponse.sources;
+                }
+                
+                updateMessageContent(placeholderEl, finalAssistantMessage);
+                
+                if(currentChat) {
+                   currentChat.messages.push(finalAssistantMessage);
+                }
+
+            } catch (error) {
+                console.error("Error during AI Response generation:", error);
+                const errorMessage = {
+                    id: assistantMessageId,
+                    role: 'assistant',
+                    content: `❌ Sorry, there was an error processing your request: ${error.message}`,
+                    timestamp: new Date().toISOString()
+                };
+                updateMessageContent(placeholderEl, errorMessage);
+                if(currentChat) currentChat.messages.push(errorMessage);
+            }
+            
+            updateUI();
+            saveState();
+            scrollToBottom();
+        };
+
+        window.newChat = function() {
+            try {
+                const chatId = generateId();
+                const chat = {
+                    id: chatId,
+                    title: 'New Chat',
+                    section: appState.currentSection,
+                    messages: [],
+                    created: new Date().toISOString(),
+                    lastMessage: new Date().toISOString()
+                };
+                appState.chats.unshift(chat);
+                appState.currentChatId = chatId;
+                document.getElementById('messagesArea').innerHTML = '';
+                updateWelcomeMessage(true);
+                updateChatHistory();
+                saveState();
+            } catch (error) {
+                console.error('Error creating new chat:', error);
+            }
+        };
+
+        window.clearHistory = function() {
+            try {
+                if (confirm('Are you sure you want to clear all chat history? This cannot be undone.')) {
+                    appState.chats = [];
+                    appState.currentChatId = null;
+                    newChat();
+                    saveState();
+                }
+            } catch (error) {
+                console.error('Error clearing history:', error);
+            }
+        };
+
+        window.removeFile = function(index) {
+            try {
+                appState.uploadedFiles.splice(index, 1);
+                updateUploadedFilesDisplay();
+                updateSendButton();
+            } catch (error) {
+                console.error('Error removing file:', error);
+            }
+        };
+
+        window.closeFileModal = function() {
+            document.getElementById('fileModal').classList.add('hidden');
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                initializeUsageState();
+                loadState();
+                populateModelSelector();
+                setupEventListeners();
+                updateUI();
+                switchSection(appState.currentSection);
+                showLandingPage();
+                if (window.innerWidth <= 768) {
+                    document.getElementById('sidebar').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error initializing app:', error);
+            }
+        });
+        
+        function initializeUsageState() {
+             const today = new Date().toDateString();
+             for (const modelId in models) {
+                 appState.usage[modelId] = { count: 0, date: today };
+             }
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('expertllm-state');
+                if (saved) {
+                    const parsedState = JSON.parse(saved);
+                    delete parsedState.uploadedFiles;
+
+                    if (parsedState.currentSection && !sections.hasOwnProperty(parsedState.currentSection)) {
+                        console.warn(`Saved section "${parsedState.currentSection}" is invalid. Resetting to default 'general'.`);
+                        parsedState.currentSection = 'general';
+                    }
+
+                    const today = new Date().toDateString();
+
+                    if (parsedState.usage) {
+                        for (const modelId in appState.usage) {
+                            if (parsedState.usage[modelId] && parsedState.usage[modelId].date === today) {
+                                appState.usage[modelId].count = parsedState.usage[modelId].count;
+                            }
+                        }
+                    }
+                    
+                    delete parsedState.usage;
+
+                    Object.assign(appState, parsedState);
+                }
+            } catch (error) {
+                console.error('Error loading state:', error);
+                localStorage.removeItem('expertllm-state');
+            }
+        }
+        
+        function populateModelSelector() {
+            const modelSelect = document.getElementById('modelSelect');
+            if (!modelSelect) return;
+            modelSelect.innerHTML = '';
+            for (const modelId in models) {
+                const model = models[modelId];
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name;
+                modelSelect.appendChild(option);
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('modelSelect').addEventListener('change', e => {
+                appState.currentModel = e.target.value;
+                updateUI();
+                saveState();
+            });
+            document.getElementById('extendThinking').addEventListener('change', e => {
+                appState.extendThinking = e.target.checked;
+                saveState();
+            });
+            document.getElementById('webSearchToggle').addEventListener('change', e => {
+                appState.webSearchEnabled = e.target.checked;
+                saveState();
+            });
+            
+            document.getElementById('modePopupBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('modePopup').classList.toggle('hidden');
+            });
+
+            document.querySelectorAll('.mode-option').forEach(button => {
+                button.addEventListener('click', () => {
+                    switchSection(button.dataset.section);
+                    document.getElementById('modePopup').classList.add('hidden');
+                });
+            });
+            
+            window.addEventListener('click', function(e) {
+                const popupContainer = document.querySelector('.mode-popup-container');
+                if (popupContainer && !popupContainer.contains(e.target)) {
+                    document.getElementById('modePopup').classList.add('hidden');
+                }
+            });
+
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('input', () => {
+                updateWordCount();
+                updateSendButton();
+                autoResize(messageInput);
+            });
+            messageInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) {
+                    document.getElementById('sidebar').classList.remove('hidden');
+                    document.getElementById('sidebarBackdrop').classList.add('hidden');
+                } else {
+                    document.getElementById('sidebar').classList.add('hidden');
+                }
+            });
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        }
+
+        function updateUI() {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.value = appState.currentModel;
+
+            const isFactChecker = appState.currentSection === 'fact-checker';
+
+            const webSearchLabel = document.getElementById('webSearchLabel');
+            const webSearchToggle = document.getElementById('webSearchToggle');
+            webSearchToggle.checked = appState.webSearchEnabled || isFactChecker;
+            webSearchToggle.disabled = isFactChecker;
+            webSearchLabel.classList.toggle('disabled', isFactChecker);
+            
+            const extendThinkingLabel = document.getElementById('extendThinkingLabel');
+            const extendThinkingToggle = document.getElementById('extendThinking');
+            extendThinkingToggle.checked = appState.extendThinking || isFactChecker;
+            extendThinkingToggle.disabled = isFactChecker;
+            extendThinkingLabel.classList.toggle('disabled', isFactChecker);
+
+            document.getElementById('wordLimit').textContent = models[appState.currentModel].inputLimit;
+            const currentSectionData = sections[appState.currentSection];
+            if (currentSectionData) {
+                document.getElementById('fileUploadBtn').style.display = currentSectionData.fileUpload ? 'inline-flex' : 'none';
+                if (!currentSectionData.fileUpload) {
+                    appState.uploadedFiles = [];
+                    updateUploadedFilesDisplay();
+                }
+            }
+
+            const currentChat = appState.chats.find(c => c.id === appState.currentChatId);
+            updateWelcomeMessage(!currentChat || currentChat.messages.length === 0);
+            updateChatHistory();
+            updateWordCount();
+            updateSendButton();
+            updateUsageDisplay();
+        }
+        
+        function updateUsageDisplay() {
+            const usage = appState.usage[appState.currentModel];
+            const limit = models[appState.currentModel].dailyLimit;
+            if (usage && typeof limit !== 'undefined') {
+                 document.getElementById('usageDisplay').textContent = `${limit - usage.count}/${limit}`;
+            } else {
+                 document.getElementById('usageDisplay').textContent = '-/-';
+            }
+        }
+
+        function updateWordCount() {
+            const input = document.getElementById('messageInput');
+            const wordCount = input.value.trim().split(/\s+/).filter(Boolean).length;
+            const limit = models[appState.currentModel].inputLimit;
+            document.getElementById('wordCount').textContent = wordCount;
+            const counterEl = document.querySelector('.word-counter');
+            counterEl.classList.toggle('error', wordCount > limit);
+            counterEl.classList.toggle('warning', wordCount > limit * 0.8 && wordCount <= limit);
+        }
+
+        function updateSendButton() {
+            const input = document.getElementById('messageInput');
+            const hasContent = input.value.trim().length > 0 || appState.uploadedFiles.length > 0;
+            const wordCount = input.value.trim().split(/\s+/).filter(Boolean).length;
+            const limit = models[appState.currentModel].inputLimit;
+            const usage = appState.usage[appState.currentModel];
+            const dailyLimit = models[appState.currentModel].dailyLimit;
+            document.getElementById('sendButton').disabled = !hasContent || wordCount > limit || usage.count >= dailyLimit;
+        }
+
+        function switchSection(sectionId) {
+            appState.currentSection = sectionId;
+            if (sectionId === 'fact-checker') {
+                 appState.webSearchEnabled = true;
+                 appState.extendThinking = true;
+            }
+            
+            document.querySelectorAll('.mode-option').forEach(b => b.classList.remove('active'));
+            const activeButton = document.querySelector(`.mode-option[data-section="${sectionId}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            const sectionData = sections[sectionId];
+            if(sectionData) {
+                const header = document.getElementById('currentModeHeader');
+                header.innerHTML = `<i class="${sectionData.icon}"></i> <span>${sectionData.name}</span>`;
+            }
+
+            const currentChat = appState.chats.find(c => c.id === appState.currentChatId);
+            if (!currentChat || currentChat.messages.length === 0) {
+                if (currentChat) currentChat.section = sectionId;
+                updateWelcomeMessage(true);
+            }
+            updateUI();
+            saveState();
+        }
+
+        function updateWelcomeMessage(show) {
+            const messagesArea = document.getElementById('messagesArea');
+            let welcome = messagesArea.querySelector('.welcome-message');
+            
+            const data = sections[appState.currentSection];
+            if (!data) return;
+
+            if (show) {
+                if (!welcome) {
+                    welcome = document.createElement('div');
+                    welcome.className = 'welcome-message';
+                    messagesArea.prepend(welcome);
+                }
+                welcome.style.display = 'block';
+                welcome.innerHTML = `
+                    <div class="welcome-icon"><i class="${data.icon}"></i></div>
+                    <h3>Welcome to ExpertLLM ${data.name} Mode</h3>
+                    <p>I'm here to help you with ${data.description}. ${data.fileUpload ? 'Upload files or start typing!' : 'Start typing to begin!'}</p>
+                    <div class="capabilities-grid">
+                        ${data.capabilities.map(c => `<div class="capability-item"><i class="fas fa-check-circle"></i><span>${c}</span></div>`).join('')}
+                    </div>`;
+            } else if (welcome) {
+                welcome.style.display = 'none';
+            }
+        }
+        
+        async function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            const filePromises = files.map(async file => {
+                if (!appState.uploadedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                    let content;
+                    try {
+                        if (file.type.startsWith('image/')) {
+                            content = await readFileAsBase64(file);
+                        } else if (file.type === 'application/pdf') {
+                            content = await readPdfFile(file);
+                        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                            content = await readDocxFile(file);
+                        } else {
+                            content = await readFileAsText(file);
+                        }
+                        
+                        appState.uploadedFiles.push({
+                            file: null, 
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            content: content
+                        });
+                    } catch (error) {
+                        console.error(`Error processing file ${file.name}:`, error);
+                        alert(`Could not process file: ${file.name}. It might be corrupted or in an unsupported format.`);
+                    }
+                }
+            });
+            
+            await Promise.all(filePromises);
+
+            updateUploadedFilesDisplay();
+            updateSendButton();
+            event.target.value = '';
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]); 
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = event => resolve(event.target.result);
+                reader.onerror = error => reject(error);
+                reader.readAsText(file);
+            });
+        }
+        
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = event => resolve(event.target.result);
+                reader.onerror = error => reject(error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function readPdfFile(file) {
+            const arrayBuffer = await readFileAsArrayBuffer(file);
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let textContent = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const text = await page.getTextContent();
+                textContent += text.items.map(s => s.str).join(' ');
+            }
+            return textContent;
+        }
+        
+        async function readDocxFile(file) {
+            const arrayBuffer = await readFileAsArrayBuffer(file);
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            return result.value;
+        }
+
+        function updateUploadedFilesDisplay() {
+            const container = document.getElementById('uploadedFiles');
+            container.innerHTML = appState.uploadedFiles.map((fileInfo, index) => `
+                <div class="uploaded-file">
+                    <i class="${getFileIcon(fileInfo.type)}"></i>
+                    <span>${escapeHTML(fileInfo.name)}</span>
+                    <button class="remove-file" onclick="removeFile(${index})">&times;</button>
+                </div>`).join('');
+        }
+        
+        function getFileIcon(type) {
+            if (type.startsWith('image/')) return 'fas fa-image';
+            if (type.includes('pdf')) return 'fas fa-file-pdf';
+            if (type.includes('word')) return 'fas fa-file-word';
+            return 'fas fa-file-alt';
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'})[m]);
+        }
+
+        function markdownToHtml(md) {
+            if (!md) return "";
+
+            const lines = md.trim().split('\n');
+            let html = '';
+            let inList = false;
+            let inParagraph = false;
+            
+            const processInline = (text) => {
+                return escapeHTML(text)
+                    .replace(/`([^`]+?)`/g, '<code>$1</code>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>');
+            };
+
+            const closeTags = () => {
+                if (inList) { html += '</ul>\n'; inList = false; }
+                if (inParagraph) { html += '</p>\n'; inParagraph = false; }
+            };
+
+            for (const line of lines) {
+                if (line.trim() === '') {
+                    closeTags();
+                    continue;
+                }
+
+                const listItemMatch = line.match(/^\s*([-*])\s+(.*)/);
+                if (listItemMatch) {
+                    if (inParagraph) { html += '</p>\n'; inParagraph = false; }
+                    if (!inList) {
+                        html += '<ul>\n';
+                        inList = true;
+                    }
+                    html += `  <li>${processInline(listItemMatch[2])}</li>\n`;
+                    continue;
+                }
+
+                if (inList) { html += '</ul>\n'; inList = false; }
+                
+                const headingMatch = line.match(/^(#+)\s+(.*)/);
+                if (headingMatch) {
+                    if (inParagraph) { html += '</p>\n'; inParagraph = false; }
+                    const level = headingMatch[1].length;
+                    html += `<h${level}>${escapeHTML(headingMatch[2])}</h${level}>\n`;
+                    continue;
+                }
+                
+                if (!inParagraph) {
+                    html += '<p>';
+                    inParagraph = true;
+                }
+                html += processInline(line) + '\n';
+            }
+
+            closeTags();
+
+            return html.replace(/<p>([\s\S]+?)<\/p>/g, (match, p_content) => {
+                return '<p>' + p_content.trim().replace(/\n/g, '<br>') + '</p>';
+            });
+        }
+        
+        function processMessageContent(rawContent) {
+            if (!rawContent) return '';
+            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+            let result = '';
+            let lastIndex = 0;
+            let match;
+            while ((match = codeBlockRegex.exec(rawContent)) !== null) {
+                result += markdownToHtml(rawContent.substring(lastIndex, match.index));
+                const lang = match[1] || 'code';
+                result += `
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <span>${lang}</span>
+                            <button onclick="copyCode(this)"><i class="far fa-copy"></i> Copy</button>
+                        </div>
+                        <pre><code>${escapeHTML(match[2].trim())}</code></pre>
+                    </div>`;
+                lastIndex = codeBlockRegex.lastIndex;
+            }
+            result += markdownToHtml(rawContent.substring(lastIndex));
+            return result;
+        }
+        
+        async function callApiWithFailover(keys, apiCallFn) {
+            let lastError = null;
+            for (const key of keys) {
+                try {
+                    const isGoogleKey = typeof key === 'string' && !key.startsWith("YOUR_");
+                    const isSearchKey = typeof key === 'object' && key.apiKey && !key.apiKey.startsWith("YOUR_");
+                    
+                    if (isGoogleKey || isSearchKey) {
+                       return await apiCallFn(key);
+                    } else {
+                       lastError = new Error(`Invalid or placeholder API key detected.`);
+                       continue;
+                    }
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`API call failed with a key, trying next... Error:`, error);
+                }
+            }
+            throw lastError || new Error("All API keys are invalid or failed.");
+        }
+
+        async function performFullSearchForQuery(query, searchKeys) {
+            const results = [];
+            const MAX_PAGES = Math.ceil(RESULTS_PER_QUERY / 10);
+            
+            for (let i = 0; i < MAX_PAGES; i++) {
+                const startIndex = i * 10 + 1;
+                const searchFn = async (searchKeySet) => {
+                    const url = `https://www.googleapis.com/customsearch/v1?key=${searchKeySet.apiKey}&cx=${searchKeySet.cx}&q=${encodeURIComponent(query)}&num=10&start=${startIndex}`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Search failed for "${query}" on page ${i + 1}`);
+                    return res.json();
+                };
+                const pageResults = await callApiWithFailover(searchKeys, searchFn);
+                if (pageResults.items) {
+                    results.push(...pageResults.items);
+                }
+            }
+            return results;
+        }
+
+        async function executeWebSearch(userMessage, placeholderEl, numQueries) {
+            const selectedModel = models[appState.currentModel];
+            displaySearchProcess(placeholderEl);
+
+            try {
+                updateSearchStatus(placeholderEl, 'Thinking of the best way to search...');
+                const queryGenSystemPrompt = `You are an expert at generating comprehensive search queries. Given the user's prompt, create ${numQueries} distinct, detailed search queries to cover all aspects of the topic. Output MUST be a JSON array of strings, and nothing else.`;
+                
+                const queryGenFn = async (apiKey) => {
+                    const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ 
+                                role: 'user', 
+                                parts: [{ text: userMessage.content }] 
+                            }],
+                            systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
+                        })
+                    });
+                    if (!response.ok) throw new Error("Query generation failed.");
+                    const data = await response.json();
+                    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        throw new Error("Invalid response structure from query generation API.");
+                    }
+                    
+                    const rawText = data.candidates[0].content.parts[0].text;
+                    let queries = [];
+                    try {
+                        queries = JSON.parse(rawText.trim().replace(/```json\n?/, "").replace(/```$/, ""));
+                    } catch (e) {
+                        console.warn("JSON.parse failed for query generation, falling back to regex extraction.", e);
+                        const matches = rawText.match(/"(.*?)"/g);
+                        if (matches) {
+                            queries = matches.map(q => q.replace(/"/g, ''));
+                        } else {
+                            throw new Error("Query generation failed: Could not parse model output.");
+                        }
+                    }
+                    return queries.filter(q => q && q.trim().length > 0);
+                };
+
+                const searchQueries = await callApiWithFailover(API_CONFIG.google.apiKeys, queryGenFn);
+                updateSearchQueriesUI(placeholderEl, searchQueries);
+
+                updateSearchStatus(placeholderEl, `Searching for ${searchQueries.length} topics...`);
+                const searchPromises = searchQueries.map(query => performFullSearchForQuery(query, API_CONFIG.google_search.keys));
+                const allSearchResults = (await Promise.all(searchPromises)).flat();
+                
+                const uniqueResults = new Map();
+                allSearchResults.forEach(item => item && item.link && uniqueResults.set(item.link, item));
+                
+                const resultsToFetch = Array.from(uniqueResults.values());
+                updateSearchStatus(placeholderEl, `Reviewing ${resultsToFetch.length} sources...`);
+
+                const fetchPromises = resultsToFetch.map(item =>
+                    fetch(VPS_FETCHER_URL, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link })
+                    })
+                    .then(res => res.ok ? res.json() : { content: '' })
+                    .then(data => ({
+                        content: data.content ? `--- Source URL: ${item.link} ---\n${data.content}\n--- End of Source ---\n` : '',
+                        sourceData: { uri: item.link, title: item.title, domain: new URL(item.link).hostname.replace('www.', '') }
+                    }))
+                );
+
+                const fetchedResults = await Promise.all(fetchPromises);
+                const allFetchedContent = fetchedResults.map(r => r.content).filter(Boolean).join('\n');
+                const sourcesForDisplay = fetchedResults.filter(r => r.content).map(r => r.sourceData);
+
+                return { fetchedWebContext: allFetchedContent, sourcesForDisplay };
+
+            } catch (error) {
+                console.error("Web Search process failed:", error);
+                return { isError: true, data: `❌ Web search process failed: ${error.message}` };
+            }
+        }
+
+        async function generateFactCheckerResponse(userMessage, placeholderEl) {
+            const selectedModel = models[appState.currentModel];
+            displaySearchProcess(placeholderEl);
+
+            const allFetchedContent = [];
+            const allSources = new Map();
+
+            try {
+                // Helper to perform one full step of the search process
+                // FIX: Removed the 'keyIndices' parameter as it's no longer needed.
+                const performSearchStep = async (step, context, numQueries) => {
+                    updateSearchStatus(placeholderEl, `Step ${step}/3: Generating search queries...`);
+                    
+                    const queryGenSystemPrompt = (step < 3)
+                        ? `You are an expert at generating search queries. Given the user's prompt, create ${numQueries} distinct, concise search queries. Output MUST be a JSON array of strings.`
+                        : `You are a verification expert. Based on the user's prompt and gathered info, generate ${numQueries} new queries to verify facts and fill gaps. Output MUST be a JSON array of strings.`;
+                    const queryGenPrompt = `USER PROMPT: "${userMessage.content}"\n\nPREVIOUSLY GATHERED INFO:\n${context}`;
+                    
+                    const queryGenFn = async (apiKey) => {
+                        const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                                contents: [{ role: 'user', parts: [{ text: queryGenPrompt }] }],
+                                systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
+                            })
+                        });
+                        if (!response.ok) throw new Error("Query generation failed.");
+                        const data = await response.json();
+
+                        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+                        let queries = [];
+                        try {
+                            queries = JSON.parse(rawText.trim().replace(/```json\n?/, "").replace(/```$/, ""));
+                        } catch (e) {
+                            console.warn("JSON.parse failed for query generation, falling back to regex extraction.", e);
+                            const matches = rawText.match(/"(.*?)"/g);
+                            if (matches) {
+                                queries = matches.map(q => q.replace(/"/g, ''));
+                            } else {
+                                throw new Error("Query generation failed: Could not parse model output.");
+                            }
+                        }
+                        return queries.filter(q => q && q.trim().length > 0);
+                    };
+                    // FIX: Pass the ENTIRE array of API keys to the failover function.
+                    // The .slice() logic has been removed.
+                    const searchQueries = await callApiWithFailover(API_CONFIG.google.apiKeys, queryGenFn);
+                    updateSearchQueriesUI(placeholderEl, searchQueries);
+
+                    // FIX: Pass the ENTIRE array of search keys to the failover function.
+                    // The .slice() logic has been removed.
+                    const searchPromises = searchQueries.map(query => performFullSearchForQuery(query, API_CONFIG.google_search.keys));
+                    const searchResultsData = (await Promise.all(searchPromises)).flat();
+                    
+                    const stepUniqueResults = new Map();
+                    searchResultsData.forEach(item => item && item.link && stepUniqueResults.set(item.link, item));
+                    
+                    const resultsToFetch = Array.from(stepUniqueResults.values());
+                    updateSearchStatus(placeholderEl, `Step ${step}/3: Reviewing ${resultsToFetch.length} new sources...`);
+
+                    const fetchPromises = resultsToFetch.map(item =>
+                        fetch(VPS_FETCHER_URL, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link })
+                        })
+                        .then(res => res.ok ? res.json() : { content: '' })
+                        .then(data => {
+                            if (data.content) {
+                                allSources.set(item.link, { uri: item.link, title: item.title, domain: new URL(item.link).hostname.replace('www.', '') });
+                                return `--- Source URL: ${item.link} ---\n${data.content.substring(0, 5000)}\n--- End of Source ---\n`;
+                            }
+                            return '';
+                        })
+                    );
+                    const fetchedForStep = (await Promise.all(fetchPromises)).filter(Boolean);
+                    allFetchedContent.push(...fetchedForStep);
+                };
+
+                // Execute the 3 steps
+                // FIX: Removed the fourth argument (keyIndices object) from these calls.
+                await performSearchStep(1, "None.", 3);
+                await performSearchStep(2, allFetchedContent.join('\n'), 3);
+                await performSearchStep(3, allFetchedContent.join('\n'), 6);
+                
+                updateSearchStatus(placeholderEl, 'Synthesizing all information...');
+                
+                const MAX_CONTEXT_LENGTH = 2000000;
+                const truncatedContent = allFetchedContent.join('\n').substring(0, MAX_CONTEXT_LENGTH);
+
+                const synthesisSystemPrompt = "You are an expert research analyst. Your goal is to synthesize information from multiple provided sources to answer the user's question comprehensively and accurately. Structure your response into 6 to 8 distinct, well-explained sections using markdown headings. Do not use any prior knowledge. If the sources do not contain the answer, state that clearly.";
+                const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Full Text from All Web Sources ---\n\n${truncatedContent}`;
+
+                const synthesisFn = async (apiKey) => {
+                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: finalUserMessage }] }],
+                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
+                        })
+                    });
+                    if (!response.ok) throw new Error("Final synthesis failed.");
+                    return response.json();
+                };
+
+                const finalData = await callApiWithFailover(API_CONFIG.google.apiKeys, synthesisFn);
+                const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
+                
+                return { data: finalContent, sources: Array.from(allSources.values()) };
+
+            } catch (error) {
+                console.error("Fact Checker Error:", error);
+                return { isError: true, data: `❌ Fact Checker process failed: ${error.message}` };
+            }
+        }
+
+
+        async function generateAIResponse(userMessage, placeholderEl) {
+            // Route to the correct function based on the mode
+            if (appState.currentSection === 'fact-checker') {
+                return await generateFactCheckerResponse(userMessage, placeholderEl);
+            }
+
+            // Handle General mode (with or without search)
+            if (appState.webSearchEnabled) {
+                const numQueries = 4;
+                const searchResult = await executeWebSearch(userMessage, placeholderEl, numQueries);
+                if (searchResult.isError) return searchResult;
+
+                updateSearchStatus(placeholderEl, 'Synthesizing final answer...');
+                const selectedModel = models[appState.currentModel];
+                const synthesisSystemPrompt = "You are an expert research assistant. Answer the user's query by synthesizing the information from the provided web sources into a comprehensive, well-written answer.";
+                const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Text from Web Sources ---\n\n${searchResult.fetchedWebContext}`;
+
+                const synthesisFn = async (apiKey) => {
+                    const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: finalUserMessage }] }],
+                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
+                        })
+                    });
+                    if (!response.ok) throw new Error("Final synthesis failed.");
+                    return response.json();
+                };
+                const finalData = await callApiWithFailover(API_CONFIG.google.apiKeys, synthesisFn);
+                const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
+                return { data: finalContent, sources: searchResult.sourcesForDisplay };
+            } else {
+                // General mode without web search
+                showLoadingMessage(placeholderEl);
+                const selectedModel = models[appState.currentModel];
+                const provider = selectedModel.provider;
+                if (!API_CONFIG[provider] || (!API_CONFIG[provider].apiKeys && !API_CONFIG[provider].apiKey) || (API_CONFIG[provider].apiKeys && API_CONFIG[provider].apiKeys.length === 0)) {
+                    return { isError: true, data: `⚠️ **Configuration Error:** API keys for provider "${provider}" are missing.` };
+                }
+
+
+                const currentChat = appState.chats.find(chat => chat.id === appState.currentChatId);
+                const history = currentChat ? currentChat.messages.filter(m => m.id !== userMessage.id && !m.files?.length) : [];
+                const systemPrompt = "You are a helpful, general-purpose AI assistant.";
+                let combinedUserContent = userMessage.content || "";
+                if (userMessage.files && userMessage.files.length > 0) {
+                    combinedUserContent += "\n\n--- User Uploaded Files ---\n";
+                    userMessage.files.forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            combinedUserContent += `\n[Image Content from file: ${file.name}]\n`;
+                        } else {
+                            combinedUserContent += `\n--- Start of file: ${file.name} ---\n${file.content}\n--- End of file: ${file.name} ---\n`;
+                        }
+                    });
+                }
+                
+                const apiCallFn = async (apiKey) => {
+                    const contents = history.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
+                    const currentUserMessageParts = [{ text: combinedUserContent }];
+                    if (userMessage.files?.length > 0) {
+                        userMessage.files.forEach(fileInfo => {
+                            if (fileInfo.type.startsWith('image/')) {
+                                currentUserMessageParts.push({ inlineData: { data: fileInfo.content, mimeType: fileInfo.type } });
+                            }
+                        });
+                    }
+                    contents.push({ role: 'user', parts: currentUserMessageParts });
+
+                    const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] }})
+                    });
+                    if (!response.ok) throw new Error("API call failed");
+                    return response.json();
+                };
+                const data = await callApiWithFailover(API_CONFIG.google.apiKeys, apiCallFn);
+                const content = data.candidates?.[0].content?.parts?.map(p => p.text).join('') || "No content received.";
+                return { data: content, sources: [] };
+            }
+        }
+
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'})[m]);
+        }
+
+        window.copyCode = function(button) {
+            const pre = button.closest('.code-block-container').querySelector('pre');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                button.innerHTML = '<i class="fas fa-check"></i> Copied';
+                setTimeout(() => { button.innerHTML = '<i class="far fa-copy"></i> Copy'; }, 2000);
+            });
+        };
+        
+        function displayMessage(message) {
+            const messagesArea = document.getElementById('messagesArea');
+            updateWelcomeMessage(false);
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${message.role}`;
+            messageEl.id = `message-${message.id}`;
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <div class="message-avatar">${message.role === 'user' ? 'U' : 'AI'}</div>
+                    <span class="message-author">${message.role === 'user' ? 'You' : 'ExpertLLM'}</span>
+                </div>
+                <div class="message-content"></div>`;
+            messagesArea.appendChild(messageEl);
+            if (message.content || message.files?.length > 0 || message.imageUrl || message.sources?.length > 0) {
+                updateMessageContent(messageEl, message);
+            }
+            return messageEl;
+        }
+
+        function updateMessageContent(messageEl, messageData) {
+            const header = messageEl.querySelector('.message-header');
+            const contentEl = messageEl.querySelector('.message-content');
+            if (messageData.thinkingTime) {
+                let timeEl = header.querySelector('.thinking-time');
+                if(!timeEl) {
+                    timeEl = document.createElement('span');
+                    timeEl.className = 'thinking-time';
+                    header.appendChild(timeEl);
+                }
+                timeEl.textContent = `(Thought for ${messageData.thinkingTime}s)`;
+            }
+            let filesHTML = '';
+            if (messageData.files?.length) {
+                filesHTML = `<div class="uploaded-files-display">${messageData.files.map(f => {
+                    if (f.type.startsWith('image/')) {
+                        return `<div class="uploaded-file-item">
+                                    <i class="${getFileIcon(f.type)}"></i>
+                                    <span>${escapeHTML(f.name)}</span>
+                                    <img src="data:${f.type};base64,${f.content}" class="file-preview-thumb" alt="Image preview">
+                                </div>`;
+                    }
+                    return `<div class="uploaded-file-item"><i class="${getFileIcon(f.type)}"></i><span>${escapeHTML(f.name)}</span></div>`
+                }).join('')}</div>`;
+            }
+            
+            let sourcesHTML = '';
+            if (messageData.sources?.length > 0) {
+                sourcesHTML = `
+                    <div class="sources-container">
+                        <h4>Sources</h4>
+                        <div class="sources-list">
+                           ${messageData.sources.map(s => `
+                            <a href="${s.uri}" class="source-item" target="_blank" rel="noopener noreferrer">
+                               <div class="source-favicon"><img src="https://www.google.com/s2/favicons?domain=${s.domain}&sz=32" alt=""></div>
+                               <span class="source-info" title="${escapeHTML(s.title)}">${escapeHTML(s.title)}</span>
+                               <span class="source-domain">${escapeHTML(s.domain)}</span>
+                            </a>`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            const searchProcessUI = contentEl.querySelector('.search-process-container');
+            if(searchProcessUI) {
+                contentEl.innerHTML = ''; 
+            }
+
+            contentEl.innerHTML += `
+                ${filesHTML}
+                <div class="final-answer-container">${processMessageContent(messageData.content)}</div>
+                ${sourcesHTML}`;
+            
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([contentEl]);
+            }
+        }
+        
+        function showLoadingMessage(placeholderEl) {
+            const contentEl = placeholderEl.querySelector('.message-content');
+            const text = 'ExpertLLM is thinking...';
+            contentEl.innerHTML = `
+                <div class="loading-message">
+                    <span>${text}</span>
+                    <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+                </div>`;
+        }
+        
+        function displaySearchProcess(placeholderEl) {
+            const contentEl = placeholderEl.querySelector('.message-content');
+            contentEl.innerHTML = `
+                <div class="search-process-container">
+                    <div class="search-status"><i class="fas fa-circle-notch fa-spin"></i><span>Initializing search...</span></div>
+                    <div class="search-queries-container hidden"></div>
+                </div>`;
+        }
+
+        function updateSearchStatus(placeholderEl, statusText) {
+            const statusEl = placeholderEl.querySelector('.search-status');
+            if (statusEl) {
+                statusEl.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i><span>${statusText}</span>`;
+            }
+        }
+
+        function updateSearchQueriesUI(placeholderEl, queries) {
+            const queriesContainer = placeholderEl.querySelector('.search-queries-container');
+            if (queriesContainer) {
+                 queriesContainer.innerHTML = `<h4>Searching</h4><div class="queries">${queries.map(q => `<div class="query-pill"><i class="fas fa-search"></i> ${escapeHTML(q)}</div>`).join('')}</div>`;
+                queriesContainer.classList.remove('hidden');
+            }
+        }
+
+        function scrollToBottom() {
+            const messagesArea = document.getElementById('messagesArea');
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        function loadChat(chatId) {
+            appState.currentChatId = chatId;
+            const chat = appState.chats.find(c => c.id === chatId);
+            if (!chat) return;
+            switchSection(chat.section);
+            const messagesArea = document.getElementById('messagesArea');
+            messagesArea.innerHTML = '';
+            if (chat.messages.length > 0) chat.messages.forEach(displayMessage);
+            updateUI();
+            scrollToBottom();
+            saveState();
+        }
+
+        function updateChatHistory() {
+            const historyList = document.getElementById('chatHistoryList');
+            if (!historyList) {
+                console.error('Chat history list element not found!');
+                return;
+            }
+            historyList.innerHTML = appState.chats.map(chat => {
+                const title = (chat.title === 'New Chat' && chat.messages.length > 0 && chat.messages[0].content)
+                    ? chat.messages[0].content.substring(0, 30) + '...'
+                    : chat.title;
+                
+                const sectionName = (chat.section && sections[chat.section]) 
+                    ? sections[chat.section].name 
+                    : 'Chat';
+
+                return `
+                    <button class="chat-history-item ${chat.id === appState.currentChatId ? 'active' : ''}" onclick="loadChat('${chat.id}')">
+                        <div class="chat-history-title">${escapeHTML(title)}</div>
+                        <div class="chat-history-time">${new Date(chat.lastMessage).toLocaleDateString()} • ${sectionName}</div>
+                    </button>`;
+            }).join('');
+        }
+        
+        function saveState() {
+          try {
+            const stateToSave = { ...appState };
+            delete stateToSave.uploadedFiles;
+            localStorage.setItem('expertllm-state', JSON.stringify(stateToSave));
+          } catch (error) {
+            console.error('Error saving state:', error);
+          }
+        }
+      </script>
+</body>
+</html>
