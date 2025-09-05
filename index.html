@@ -2198,9 +2198,6 @@
         // ❗️❗️❗️ IMPORTANT: REPLACE WITH YOUR VPS IP ADDRESS or a CORS proxy URL ❗️❗️❗️
         const VPS_FETCHER_URL = "https://fectherjs.vercel.app/fetch-content";
 
-        // Adjustable number of sources to fetch per search query
-        const RESULTS_PER_QUERY = 10;
-
 
         // Model configurations - Link models to their providers here
         const models = {
@@ -2926,6 +2923,9 @@
             throw lastError || new Error("All API keys are invalid or failed.");
         }
 
+        const RESULTS_PER_QUERY = (appState.currentSection === 'fact-checker') ? 10 : 20;
+        console.log(`The number of results is: ${RESULTS_PER_QUERY}`);
+
         async function performFullSearchForQuery(query, searchKeys) {
             const results = [];
             const MAX_PAGES = Math.ceil(RESULTS_PER_QUERY / 10);
@@ -3399,4 +3399,5 @@
         }
       </script>
 </body>
+
 </html>
