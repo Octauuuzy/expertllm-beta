@@ -2174,10 +2174,16 @@
             google: {
                 // ❗️ IMPORTANT: Add your Google AI API Keys here. The system will try them in order.
                 apiKeys: [
-                    "AIzaSyBn1oivXFNBrB3-pjE1msJ3okOvJdmDCJI", // Key 1
-                    "AIzaSyCMrUkqxXc_F0ahn0jCDMQSfR53JYn7bN8", // Key 2 (failover)
-                    "AIzaSyCzGwz_e1m0kiIyrEGbw9I3Cb05O39P-F0", // Key 3 (failover)
-                    "AIzaSyB7bP-iBUfrxQA8LDwoHyIBUJErQ2VF3SY"  // Key 4 (failover)
+                     "AIzaSyC_NLB9e1QvOJ343_xKjb-9CMYAnhISXiE",
+                     "AIzaSyBSNBn35oI4GZn0dSnDrQFYL1pHIi8PwY4",
+                     "AIzaSyCGgBA-QFckjh2GRNO_zeq79EmA_tLW-A8",
+                     "AIzaSyDlhyuW2fVjQtVJgNPt-OCxkef1CW0BGXc",
+                     "AIzaSyDEsUpNwFdKMZD3FWd3xmX4mo2uqDcmJ2k",
+                     "AIzaSyA07AzP20CGXCDc8xMNqlScFgXX1kJAzzM",
+                     "AIzaSyBk_b3f1b3QAa7liwNJexs6S3XzfMZhBHM",
+                     "AIzaSyCYyUOUNdoEopl0x8g9jL81KnAiLXPTIjs",
+                     "AIzaSyBF10RsW9u6pBDSCpNUngupc5quXJzrq4I",
+                     "AIzaSyDtIuzPao5WN6xJFQQiUtkiK52EZ4yweig"
                 ],
             },
             openrouter: {
@@ -2187,11 +2193,18 @@
             google_search: {
                 // ❗️ IMPORTANT: Add your Google Search API Keys and corresponding Search Engine IDs (CX) here.
                 keys: [
-                    { apiKey: "AIzaSyDbdmWIPyec7ZJ64o69rcxioOYrUnaTzY8", cx: "c43fe109b43db48f4" }, // Key set 1
-                    { apiKey: "AIzaSyBjWB7AEN7PrcfXOOWRU_z7wjHetcr91jc", cx: "c43fe109b43db48f4" }, // Key set 2 (failover)
-                    { apiKey: "AIzaSyCU_K3U8h9sX-kkN7sTG8-pGspKSqwRwFo", cx: "c43fe109b43db48f4" }, // Key set 3 (failover)
-                    { apiKey: "AIzaSyBOXr9gMr_DAT9DFQhuSSOoydBVsDFRmYw", cx: "c43fe109b43db48f4" }  // Key set 4 (failover)
-                ]
+                    { apiKey: "AIzaSyDoZ4XXiDoHp-s7VsRCceRV9N7UNNF-NLk"}, // Key set 1
+                    { apiKey: "AIzaSyCrXZMtXnfvOFqlksuTN1-CwfyegVJypeY"}, // Key set 2 (failover)
+                    { apiKey: "AIzaSyDjiAGHOp_sI_xOJDyET8vOZexyJr1Jh9E"}, // Key set 3 (failover)
+                    { apiKey: "AIzaSyCdjXgD6OPcPRzAo5m19feKP65LBWoFqOA"},
+                    { apikey: "AIzaSyAXKiEeT49gN39_xfu7cq_N2qikNr3nwH8"},
+                    { apikey: "AIzaSyCoSh7qJzBPo6DAcvxOqMbqPBlDtMdqQro"},
+                    { apikey: "AIzaSyDX850fOQ4s4NvReyoZPYQqX18Q10PzoKE"},
+                    { apikey: "AIzaSyDbJODp0FLWJzuGOVMOstRMepMCCIwaID0"},
+                    { apikey: "AIzaSyB4cZys7d09SBbEbemi6sJ8aPPzUNgMr88"},
+                    { apiKey: "AIzaSyDniNuWeruWh3bC57UIwH14ev4FuZKL85E"}
+                ],
+                cx : "c43fe109b43db48f4"
             }
         };
 
@@ -2240,6 +2253,54 @@
         // -------------------------------------------------------------------
         // END: UNIFIED API CONFIGURATION
         // -------------------------------------------------------------------
+
+        // --- START: Smart API Key Failover System ---
+        let currentGoogleApiKeyIndex = 0;
+        let currentSearchKeyIndex = 0;
+
+        async function callApiWithFailover(apiType, apiCallFn) {
+            const isSearch = apiType === 'search';
+            const keys = isSearch ? API_CONFIG.google_search.keys : API_CONFIG.google.apiKeys;
+            let currentIndex = isSearch ? currentSearchKeyIndex : currentGoogleApiKeyIndex;
+
+            if (currentIndex >= keys.length) {
+                throw new Error(`All available ${apiType} API keys have failed or exceeded their quota.`);
+            }
+
+            const currentKey = keys[currentIndex];
+
+            try {
+                // Check for invalid placeholder keys before making the call
+                const keyToCheck = isSearch ? currentKey.apiKey : currentKey;
+                if (!keyToCheck || keyToCheck.startsWith("YOUR_")) {
+                     throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
+                }
+                
+                return await apiCallFn(currentKey);
+
+            } catch (error) {
+                console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
+                
+                // Only switch keys on quota errors (HTTP 429) or specific API key errors
+                const errorMessage = error.message.toLowerCase();
+                if (errorMessage.includes('429') || errorMessage.includes('api key not valid')) {
+                    
+                    if (isSearch) {
+                        currentSearchKeyIndex++;
+                    } else {
+                        currentGoogleApiKeyIndex++;
+                    }
+
+                    // Immediately retry with the next key
+                    return callApiWithFailover(apiType, apiCallFn);
+                }
+                
+                // For other types of errors, re-throw them
+                throw error;
+            }
+        }
+        // --- END: Smart API Key Failover System ---
+
 
         // Application State
         const appState = {
@@ -2902,34 +2963,13 @@
             return result;
         }
         
-        async function callApiWithFailover(keys, apiCallFn) {
-            let lastError = null;
-            for (const key of keys) {
-                try {
-                    const isGoogleKey = typeof key === 'string' && !key.startsWith("YOUR_");
-                    const isSearchKey = typeof key === 'object' && key.apiKey && !key.apiKey.startsWith("YOUR_");
-                    
-                    if (isGoogleKey || isSearchKey) {
-                       return await apiCallFn(key);
-                    } else {
-                       lastError = new Error(`Invalid or placeholder API key detected.`);
-                       continue;
-                    }
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`API call failed with a key, trying next... Error:`, error);
-                }
-            }
-            throw lastError || new Error("All API keys are invalid or failed.");
-        }
-
         function getResultsPerQuery() {
             const results = appState.currentSection === 'fact-checker' ? 10 : 20;
             console.log(`Current section: ${appState.currentSection}, results per query: ${results}`);
             return results;
         }
 
-        async function performFullSearchForQuery(query, searchKeys) {
+        async function performFullSearchForQuery(query) {
             const results = [];
             const resultsPerQuery = getResultsPerQuery();
             const MAX_PAGES = Math.ceil(resultsPerQuery / 10);
@@ -2939,10 +2979,18 @@
                 const searchFn = async (searchKeySet) => {
                     const url = `https://www.googleapis.com/customsearch/v1?key=${searchKeySet.apiKey}&cx=${searchKeySet.cx}&q=${encodeURIComponent(query)}&num=10&start=${startIndex}`;
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error(`Search failed for "${query}" on page ${i + 1}`);
+                    if (!res.ok) {
+                        const errorBody = await res.text();
+                        const status = res.status;
+                        // Throw an error that includes the status code for the failover logic
+                        const err = new Error(`Search failed for "${query}" on page ${i + 1} with status ${status}. Response: ${errorBody}`);
+                        err.status = status;
+                        throw err;
+                    }
                     return res.json();
                 };
-                const pageResults = await callApiWithFailover(searchKeys, searchFn);
+                
+                const pageResults = await callApiWithFailover('search', searchFn);
                 if (pageResults.items) {
                     results.push(...pageResults.items);
                 }
@@ -2970,7 +3018,12 @@
                             systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
                         })
                     });
-                    if (!response.ok) throw new Error("Query generation failed.");
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        const err = new Error(`Query generation failed with status ${response.status}. Response: ${errorBody}`);
+                        err.status = response.status;
+                        throw err;
+                    }
                     const data = await response.json();
                     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
                         throw new Error("Invalid response structure from query generation API.");
@@ -2992,11 +3045,11 @@
                     return queries.filter(q => q && q.trim().length > 0);
                 };
 
-                const searchQueries = await callApiWithFailover(API_CONFIG.google.apiKeys, queryGenFn);
+                const searchQueries = await callApiWithFailover('google', queryGenFn);
                 updateSearchQueriesUI(placeholderEl, searchQueries);
 
                 updateSearchStatus(placeholderEl, `Searching for ${searchQueries.length} topics...`);
-                const searchPromises = searchQueries.map(query => performFullSearchForQuery(query, API_CONFIG.google_search.keys));
+                const searchPromises = searchQueries.map(query => performFullSearchForQuery(query));
                 const allSearchResults = (await Promise.all(searchPromises)).flat();
                 
                 const uniqueResults = new Map();
@@ -3037,7 +3090,6 @@
 
             try {
                 // Helper to perform one full step of the search process
-                // FIX: Removed the 'keyIndices' parameter as it's no longer needed.
                 const performSearchStep = async (step, context, numQueries) => {
                     updateSearchStatus(placeholderEl, `Step ${step}/3: Generating search queries...`);
                     
@@ -3053,7 +3105,12 @@
                                 systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
                             })
                         });
-                        if (!response.ok) throw new Error("Query generation failed.");
+                        if (!response.ok) {
+                           const errorBody = await response.text();
+                           const err = new Error(`Fact-checker query generation failed with status ${response.status}. Response: ${errorBody}`);
+                           err.status = response.status;
+                           throw err;
+                        }
                         const data = await response.json();
 
                         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
@@ -3071,14 +3128,10 @@
                         }
                         return queries.filter(q => q && q.trim().length > 0);
                     };
-                    // FIX: Pass the ENTIRE array of API keys to the failover function.
-                    // The .slice() logic has been removed.
-                    const searchQueries = await callApiWithFailover(API_CONFIG.google.apiKeys, queryGenFn);
+                    const searchQueries = await callApiWithFailover('google', queryGenFn);
                     updateSearchQueriesUI(placeholderEl, searchQueries);
 
-                    // FIX: Pass the ENTIRE array of search keys to the failover function.
-                    // The .slice() logic has been removed.
-                    const searchPromises = searchQueries.map(query => performFullSearchForQuery(query, API_CONFIG.google_search.keys));
+                    const searchPromises = searchQueries.map(query => performFullSearchForQuery(query));
                     const searchResultsData = (await Promise.all(searchPromises)).flat();
                     
                     const stepUniqueResults = new Map();
@@ -3105,7 +3158,6 @@
                 };
 
                 // Execute the 3 steps
-                // FIX: Removed the fourth argument (keyIndices object) from these calls.
                 await performSearchStep(1, "None.", 3);
                 await performSearchStep(2, allFetchedContent.join('\n'), 3);
                 await performSearchStep(3, allFetchedContent.join('\n'), 6);
@@ -3127,11 +3179,16 @@
                             systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
                         })
                     });
-                    if (!response.ok) throw new Error("Final synthesis failed.");
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        const err = new Error(`Final synthesis failed with status ${response.status}. Response: ${errorBody}`);
+                        err.status = response.status;
+                        throw err;
+                    }
                     return response.json();
                 };
 
-                const finalData = await callApiWithFailover(API_CONFIG.google.apiKeys, synthesisFn);
+                const finalData = await callApiWithFailover('google', synthesisFn);
                 const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
                 
                 return { data: finalContent, sources: Array.from(allSources.values()) };
@@ -3169,10 +3226,15 @@
                             systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
                         })
                     });
-                    if (!response.ok) throw new Error("Final synthesis failed.");
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        const err = new Error(`Web search synthesis failed with status ${response.status}. Response: ${errorBody}`);
+                        err.status = response.status;
+                        throw err;
+                    }
                     return response.json();
                 };
-                const finalData = await callApiWithFailover(API_CONFIG.google.apiKeys, synthesisFn);
+                const finalData = await callApiWithFailover('google', synthesisFn);
                 const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
                 return { data: finalContent, sources: searchResult.sourcesForDisplay };
             } else {
@@ -3215,10 +3277,15 @@
                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] }})
                     });
-                    if (!response.ok) throw new Error("API call failed");
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        const err = new Error(`API call failed with status ${response.status}. Response: ${errorBody}`);
+                        err.status = response.status;
+                        throw err;
+                    }
                     return response.json();
                 };
-                const data = await callApiWithFailover(API_CONFIG.google.apiKeys, apiCallFn);
+                const data = await callApiWithFailover('google', apiCallFn);
                 const content = data.candidates?.[0].content?.parts?.map(p => p.text).join('') || "No content received.";
                 return { data: content, sources: [] };
             }
