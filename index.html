@@ -2193,18 +2193,17 @@
             google_search: {
                 // ❗️ IMPORTANT: Add your Google Search API Keys and corresponding Search Engine IDs (CX) here.
                 keys: [
-                    { apiKey: "AIzaSyDoZ4XXiDoHp-s7VsRCceRV9N7UNNF-NLk"}, // Key set 1
-                    { apiKey: "AIzaSyCrXZMtXnfvOFqlksuTN1-CwfyegVJypeY"}, // Key set 2 (failover)
-                    { apiKey: "AIzaSyDjiAGHOp_sI_xOJDyET8vOZexyJr1Jh9E"}, // Key set 3 (failover)
-                    { apiKey: "AIzaSyCdjXgD6OPcPRzAo5m19feKP65LBWoFqOA"},
-                    { apikey: "AIzaSyAXKiEeT49gN39_xfu7cq_N2qikNr3nwH8"},
-                    { apikey: "AIzaSyCoSh7qJzBPo6DAcvxOqMbqPBlDtMdqQro"},
-                    { apikey: "AIzaSyDX850fOQ4s4NvReyoZPYQqX18Q10PzoKE"},
-                    { apikey: "AIzaSyDbJODp0FLWJzuGOVMOstRMepMCCIwaID0"},
-                    { apikey: "AIzaSyB4cZys7d09SBbEbemi6sJ8aPPzUNgMr88"},
-                    { apiKey: "AIzaSyDniNuWeruWh3bC57UIwH14ev4FuZKL85E"}
-                ],
-                cx : "c43fe109b43db48f4"
+                    { apiKey: "AIzaSyDoZ4XXiDoHp-s7VsRCceRV9N7UNNF-NLk", cx: "c43fe109b43db48f4" }, // Key set 1
+                    { apiKey: "AIzaSyCrXZMtXnfvOFqlksuTN1-CwfyegVJypeY", cx: "c43fe109b43db48f4" }, // Key set 2 (failover)
+                    { apiKey: "AIzaSyDjiAGHOp_sI_xOJDyET8vOZexyJr1Jh9E", cx: "c43fe109b43db48f4" }, // Key set 3 (failover)
+                    { apiKey: "AIzaSyCdjXgD6OPcPRzAo5m19feKP65LBWoFqOA", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyAXKiEeT49gN39_xfu7cq_N2qikNr3nwH8", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyCoSh7qJzBPo6DAcvxOqMbqPBlDtMdqQro", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyDX850fOQ4s4NvReyoZPYQqX18Q10PzoKE", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyDbJODp0FLWJzuGOVMOstRMepMCCIwaID0", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyB4cZys7d09SBbEbemi6sJ8aPPzUNgMr88", cx: "c43fe109b43db48f4" },
+                    { apiKey: "AIzaSyDniNuWeruWh3bC57UIwH14ev4FuZKL85E", cx: "c43fe109b43db48f4" }
+                ]
             }
         };
 
@@ -2282,8 +2281,8 @@
                 console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
                 
                 // Only switch keys on quota errors (HTTP 429) or specific API key errors
-                const errorMessage = error.message.toLowerCase();
-                if (errorMessage.includes('429') || errorMessage.includes('api key not valid')) {
+                 const errorStatus = error.status;
+                if (errorStatus === 429 || errorStatus === 400) {
                     
                     if (isSearch) {
                         currentSearchKeyIndex++;
