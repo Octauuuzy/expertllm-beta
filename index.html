@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExpertLLM - AI-Powered Writing, Summarizing & Coding Assistant</title>
+    <title>ExpertLLM</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script>
       // MathJax Configuration
@@ -2923,12 +2923,16 @@
             throw lastError || new Error("All API keys are invalid or failed.");
         }
 
-        const RESULTS_PER_QUERY = (appState.currentSection === 'fact-checker') ? 10 : 20;
-        console.log(`The number of results is: ${RESULTS_PER_QUERY}`);
+        function getResultsPerQuery() {
+            const results = appState.currentSection === 'fact-checker' ? 10 : 20;
+            console.log(`Current section: ${appState.currentSection}, results per query: ${results}`);
+            return results;
+        }
 
         async function performFullSearchForQuery(query, searchKeys) {
             const results = [];
-            const MAX_PAGES = Math.ceil(RESULTS_PER_QUERY / 10);
+            const resultsPerQuery = getResultsPerQuery();
+            const MAX_PAGES = Math.ceil(resultsPerQuery / 10);
             
             for (let i = 0; i < MAX_PAGES; i++) {
                 const startIndex = i * 10 + 1;
@@ -3399,5 +3403,4 @@
         }
       </script>
 </body>
-
 </html>
