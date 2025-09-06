@@ -2143,9 +2143,14 @@
                             <div class="word-counter">
                                 <span id="wordCount">0</span>/<span id="wordLimit">32000</span> words
                             </div>
-                            <button id="sendButton" class="send-button" onclick="sendMessage()" disabled>
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
+                            <div class="flex items-center gap-8">
+                                <button id="stopButton" class="send-button hidden" onclick="stopGeneration()" style="background-color: var(--color-error); color: white;">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                                <button id="sendButton" class="send-button" onclick="sendMessage()" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2253,77 +2258,91 @@
         // END: UNIFIED API CONFIGURATION
         // -------------------------------------------------------------------
 
-// --- START: Smart API Key Failover System ---
-let currentGoogleApiKeyIndex = 0;
-let currentSearchKeyIndex = 0;
+        // --- START: Smart API Key Failover System ---
+        let currentGoogleApiKeyIndex = 0;
+        let currentSearchKeyIndex = 0;
 
-async function callApiWithFailover(apiType, apiCallFn) {
-    const isSearch = apiType === 'search';
-    const keys = isSearch ? API_CONFIG.google_search.keys : API_CONFIG.google.apiKeys;
-    let currentIndex = isSearch ? currentSearchKeyIndex : currentGoogleApiKeyIndex;
+        async function callApiWithFailover(apiType, apiCallFn, signal) {
+            const isSearch = apiType === 'search';
+            const keys = isSearch ? API_CONFIG.google_search.keys : API_CONFIG.google.apiKeys;
+            let currentIndex = isSearch ? currentSearchKeyIndex : currentGoogleApiKeyIndex;
 
-    if (currentIndex >= keys.length) {
-        throw new Error(`All available ${apiType} API keys have failed or exceeded their quota.`);
-    }
-
-    const currentKey = keys[currentIndex];
-
-    try {
-        // Check for invalid placeholder keys before making the call
-        const keyToCheck = isSearch ? currentKey.apiKey : currentKey;
-        if (!keyToCheck || keyToCheck.startsWith("YOUR_")) {
-             throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
-        }
-        
-        const result = await apiCallFn(currentKey);
-        
-        // Rotate to next key after success for load balancing
-        if (isSearch) {
-            currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length;
-        } else {
-            currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length;
-        }
-        
-        return result;
-
-    } catch (error) {
-        console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
-        
-        // Extract status from error message if not directly available
-        let errorStatus = error.status;
-        if (!errorStatus && error.message) {
-            const statusMatch = error.message.match(/status (\d+)/);
-            if (statusMatch) {
-                errorStatus = parseInt(statusMatch[1], 10);
-            } else if (error.message.includes('429') || error.message.includes('Quota exceeded') || error.message.includes('RESOURCE_EXHAUSTED')) {
-                errorStatus = 429;
-            } else if (error.message.includes('400')) {
-                errorStatus = 400;
-            }
-        }
-        
-        console.log(`Detected error status: ${errorStatus}`); // Added logging for debugging
-        
-        // Only switch keys on quota errors (HTTP 429) or specific API key errors
-        if (errorStatus === 429 || errorStatus === 400) {
-            if (isSearch) {
-                currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length; // Cycle through keys
-            } else {
-                currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length; // Cycle through keys
-                // Add a delay for Gemini API to respect per-minute quotas
-                await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10-second delay on failover
+            if (currentIndex >= keys.length) {
+                throw new Error(`All available ${apiType} API keys have failed or exceeded their quota.`);
             }
 
-            // Retry with the next key
-            return callApiWithFailover(apiType, apiCallFn);
-        }
-        
-        // For other types of errors, re-throw them
-        throw error;
-    }
-}
-// --- END: Smart API Key Failover System ---
+            const currentKey = keys[currentIndex];
 
+            try {
+                // Check for invalid placeholder keys before making the call
+                const keyToCheck = isSearch ? currentKey.apiKey : currentKey;
+                if (!keyToCheck || keyToCheck.startsWith("YOUR_")) {
+                    throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
+                }
+                
+                const result = await apiCallFn(currentKey, signal);
+                
+                // Rotate to next key after success for load balancing
+                if (isSearch) {
+                    currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length;
+                } else {
+                    currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length;
+                }
+                
+                return result;
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw error; // Re-throw abort errors to be handled by the caller
+                }
+
+                console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
+                
+                // Extract status from error message if not directly available
+                let errorStatus = error.status;
+                if (!errorStatus && error.message) {
+                    const statusMatch = error.message.match(/status (\d+)/);
+                    if (statusMatch) {
+                        errorStatus = parseInt(statusMatch[1], 10);
+                    } else if (error.message.includes('429') || error.message.includes('Quota exceeded') || error.message.includes('RESOURCE_EXHAUSTED')) {
+                        errorStatus = 429;
+                    } else if (error.message.includes('400')) {
+                        errorStatus = 400;
+                    }
+                }
+                
+                console.log(`Detected error status: ${errorStatus}`); // Added logging for debugging
+                
+                // Only switch keys on quota errors (HTTP 429) or specific API key errors
+                if (errorStatus === 429 || errorStatus === 400) {
+                    if (isSearch) {
+                        currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length; // Cycle through keys
+                    } else {
+                        currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length; // Cycle through keys
+                        // Add a delay for Gemini API to respect per-minute quotas
+                        await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10-second delay on failover
+                    }
+
+                    // Retry with the next key
+                    return callApiWithFailover(apiType, apiCallFn, signal);
+                }
+                
+                // For other types of errors, re-throw them
+                throw error;
+            }
+        }
+        // --- END: Smart API Key Failover System ---
+
+        // --- START: Abort Controller for stopping generation ---
+        let currentRequestController = null;
+        
+        window.stopGeneration = function() {
+            if (currentRequestController) {
+                currentRequestController.abort();
+                console.log("Request aborted by user.");
+            }
+        };
+        // --- END: Abort Controller ---
 
         // Application State
         const appState = {
@@ -2408,8 +2427,9 @@ async function callApiWithFailover(apiType, apiCallFn) {
         };
 
         window.sendMessage = async function() {
+            if (currentRequestController) return; // Don't send if a request is in progress
+
             const input = document.getElementById('messageInput');
-            if (!input) return;
             const messageText = input.value.trim();
             if (!messageText && appState.uploadedFiles.length === 0) return;
 
@@ -2422,6 +2442,15 @@ async function callApiWithFailover(apiType, apiCallFn) {
 
             if (!appState.currentChatId) newChat();
             
+            // Setup AbortController
+            currentRequestController = new AbortController();
+            const signal = currentRequestController.signal;
+
+            // UI updates for processing state
+            document.getElementById('sendButton').classList.add('hidden');
+            document.getElementById('stopButton').classList.remove('hidden');
+            document.getElementById('messageInput').disabled = true;
+
             const filesForMessage = JSON.parse(JSON.stringify(appState.uploadedFiles));
 
             const userMessage = {
@@ -2458,7 +2487,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
             const startTime = performance.now();
 
             try {
-                const aiResponse = await generateAIResponse(userMessage, placeholderEl);
+                const aiResponse = await generateAIResponse(userMessage, placeholderEl, signal);
                 const endTime = performance.now();
                 const thinkingTime = ((endTime - startTime) / 1000).toFixed(2);
 
@@ -2487,16 +2516,23 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 const errorMessage = {
                     id: assistantMessageId,
                     role: 'assistant',
-                    content: `❌ Sorry, there was an error processing your request: ${error.message}`,
+                    content: error.name === 'AbortError' 
+                        ? '⏹️ Generation stopped by user.' 
+                        : `❌ Sorry, there was an error processing your request: ${error.message}`,
                     timestamp: new Date().toISOString()
                 };
                 updateMessageContent(placeholderEl, errorMessage);
                 if(currentChat) currentChat.messages.push(errorMessage);
+            } finally {
+                // Reset UI and abort controller regardless of outcome
+                currentRequestController = null;
+                document.getElementById('sendButton').classList.remove('hidden');
+                document.getElementById('stopButton').classList.add('hidden');
+                document.getElementById('messageInput').disabled = false;
+                updateUI();
+                saveState();
+                scrollToBottom();
             }
-            
-            updateUI();
-            saveState();
-            scrollToBottom();
         };
 
         window.newChat = function() {
@@ -2660,7 +2696,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
             messageInput.addEventListener('keydown', e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendMessage();
+                    document.getElementById('sendButton').click();
                 }
             });
             document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -2901,15 +2937,10 @@ async function callApiWithFailover(apiType, apiCallFn) {
         function escapeHTML(str) {
             return str.replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'})[m]);
         }
-
+        
         function markdownToHtml(md) {
             if (!md) return "";
 
-            const lines = md.trim().split('\n');
-            let html = '';
-            let inList = false;
-            let inParagraph = false;
-            
             const processInline = (text) => {
                 return escapeHTML(text)
                     .replace(/`([^`]+?)`/g, '<code>$1</code>')
@@ -2917,72 +2948,101 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     .replace(/\*(.+?)\*/g, '<em>$1</em>');
             };
 
-            const closeTags = () => {
-                if (inList) { html += '</ul>\n'; inList = false; }
-                if (inParagraph) { html += '</p>\n'; inParagraph = false; }
-            };
+            let html = '';
+            const lines = md.trim().split('\n');
+            let inTable = false;
 
-            for (const line of lines) {
-                if (line.trim() === '') {
-                    closeTags();
-                    continue;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const prevLine = lines[i-1];
+                const nextLine = lines[i+1];
+
+                // Check for table header
+                if (nextLine && nextLine.match(/^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/) && !inTable) {
+                    inTable = true;
+                    html += '<table class="data-table"><thead><tr>';
+                    line.split('|').slice(1, -1).forEach(header => {
+                        html += `<th>${processInline(header.trim())}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+                    i++; // Skip separator line
                 }
-
-                const listItemMatch = line.match(/^\s*([-*])\s+(.*)/);
-                if (listItemMatch) {
-                    if (inParagraph) { html += '</p>\n'; inParagraph = false; }
-                    if (!inList) {
-                        html += '<ul>\n';
-                        inList = true;
+                // Check for table rows
+                else if (inTable && line.startsWith('|')) {
+                    html += '<tr>';
+                    line.split('|').slice(1, -1).forEach(cell => {
+                        html += `<td>${processInline(cell.trim())}</td>`;
+                    });
+                    html += '</tr>';
+                }
+                // End of table
+                else if (inTable && !line.startsWith('|')) {
+                    inTable = false;
+                    html += '</tbody></table>';
+                    // Process current line normally
+                    i--; 
+                }
+                // Regular markdown processing
+                else {
+                    const listItemMatch = line.match(/^\s*([-*])\s+(.*)/);
+                    if (listItemMatch) {
+                        const isFirst = !prevLine || !prevLine.match(/^\s*([-*])\s+.*/);
+                        const isLast = !nextLine || !nextLine.match(/^\s*([-*])\s+.*/);
+                        if(isFirst) html += '<ul>';
+                        html += `<li>${processInline(listItemMatch[2])}</li>`;
+                        if(isLast) html += '</ul>';
+                    } else if (line.match(/^#+\s/)) {
+                         const headingMatch = line.match(/^(#+)\s+(.*)/);
+                         const level = headingMatch[1].length;
+                         html += `<h${level}>${escapeHTML(headingMatch[2])}</h${level}>`;
+                    } else if (line.trim() !== '') {
+                        html += `<p>${processInline(line)}</p>`;
                     }
-                    html += `  <li>${processInline(listItemMatch[2])}</li>\n`;
-                    continue;
                 }
-
-                if (inList) { html += '</ul>\n'; inList = false; }
-                
-                const headingMatch = line.match(/^(#+)\s+(.*)/);
-                if (headingMatch) {
-                    if (inParagraph) { html += '</p>\n'; inParagraph = false; }
-                    const level = headingMatch[1].length;
-                    html += `<h${level}>${escapeHTML(headingMatch[2])}</h${level}>\n`;
-                    continue;
-                }
-                
-                if (!inParagraph) {
-                    html += '<p>';
-                    inParagraph = true;
-                }
-                html += processInline(line) + '\n';
             }
-
-            closeTags();
-
-            return html.replace(/<p>([\s\S]+?)<\/p>/g, (match, p_content) => {
-                return '<p>' + p_content.trim().replace(/\n/g, '<br>') + '</p>';
-            });
+            if(inTable) html += '</tbody></table>';
+            return html;
         }
-        
+
         function processMessageContent(rawContent) {
             if (!rawContent) return '';
             const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
             let result = '';
             let lastIndex = 0;
             let match;
+
+            // Isolate code blocks first
+            const parts = [];
             while ((match = codeBlockRegex.exec(rawContent)) !== null) {
-                result += markdownToHtml(rawContent.substring(lastIndex, match.index));
-                const lang = match[1] || 'code';
-                result += `
-                    <div class="code-block-container">
-                        <div class="code-block-header">
-                            <span>${lang}</span>
-                            <button onclick="copyCode(this)"><i class="far fa-copy"></i> Copy</button>
-                        </div>
-                        <pre><code>${escapeHTML(match[2].trim())}</code></pre>
-                    </div>`;
+                // Add text before the code block
+                if (match.index > lastIndex) {
+                    parts.push({ type: 'md', content: rawContent.substring(lastIndex, match.index) });
+                }
+                // Add the code block
+                parts.push({ type: 'code', lang: match[1] || 'code', content: match[2].trim() });
                 lastIndex = codeBlockRegex.lastIndex;
             }
-            result += markdownToHtml(rawContent.substring(lastIndex));
+            // Add any remaining text after the last code block
+            if (lastIndex < rawContent.length) {
+                parts.push({ type: 'md', content: rawContent.substring(lastIndex) });
+            }
+            
+            // Process each part
+            parts.forEach(part => {
+                if (part.type === 'md') {
+                    result += markdownToHtml(part.content);
+                } else {
+                    result += `
+                        <div class="code-block-container">
+                            <div class="code-block-header">
+                                <span>${part.lang}</span>
+                                <button onclick="copyCode(this)"><i class="far fa-copy"></i> Copy</button>
+                            </div>
+                            <pre><code>${escapeHTML(part.content)}</code></pre>
+                        </div>`;
+                }
+            });
+
             return result;
         }
         
@@ -2992,20 +3052,19 @@ async function callApiWithFailover(apiType, apiCallFn) {
             return results;
         }
 
-        async function performFullSearchForQuery(query) {
+        async function performFullSearchForQuery(query, signal) {
             const results = [];
             const resultsPerQuery = getResultsPerQuery();
             const MAX_PAGES = Math.ceil(resultsPerQuery / 10);
             
             for (let i = 0; i < MAX_PAGES; i++) {
                 const startIndex = i * 10 + 1;
-                const searchFn = async (searchKeySet) => {
+                const searchFn = async (searchKeySet, localSignal) => {
                     const url = `https://www.googleapis.com/customsearch/v1?key=${searchKeySet.apiKey}&cx=${searchKeySet.cx}&q=${encodeURIComponent(query)}&num=10&start=${startIndex}`;
-                    const res = await fetch(url);
+                    const res = await fetch(url, { signal: localSignal });
                     if (!res.ok) {
                         const errorBody = await res.text();
                         const status = res.status;
-                        // Throw an error that includes the status code for the failover logic
                         const err = new Error(`Search failed for "${query}" on page ${i + 1} with status ${status}. Response: ${errorBody}`);
                         err.status = status;
                         throw err;
@@ -3013,17 +3072,16 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     return res.json();
                 };
                 
-                const pageResults = await callApiWithFailover('search', searchFn);
+                const pageResults = await callApiWithFailover('search', searchFn, signal);
                 if (pageResults.items) {
                     results.push(...pageResults.items);
                 }
-                 // Add a delay between paged requests to the same query
                 if (i < MAX_PAGES - 1) await new Promise(resolve => setTimeout(resolve, 200));
             }
             return results;
         }
 
-        async function executeWebSearch(userMessage, placeholderEl, numQueries) {
+        async function executeWebSearch(userMessage, placeholderEl, numQueries, signal) {
             const selectedModel = models[appState.currentModel];
             displaySearchProcess(placeholderEl);
 
@@ -3031,7 +3089,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 updateSearchStatus(placeholderEl, 'Thinking of the best way to search...');
                 const queryGenSystemPrompt = `You are an expert at generating comprehensive search queries. Given the user's prompt, create ${numQueries} distinct, detailed search queries to cover all aspects of the topic. Output MUST be a JSON array of strings, and nothing else.`;
                 
-                const queryGenFn = async (apiKey) => {
+                const queryGenFn = async (apiKey, localSignal) => {
                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -3047,7 +3105,8 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ]
-                        })
+                        }),
+                        signal: localSignal
                     });
                     if (!response.ok) {
                         const errorBody = await response.text();
@@ -3076,16 +3135,15 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     return queries.filter(q => q && q.trim().length > 0);
                 };
 
-                const searchQueries = await callApiWithFailover('google', queryGenFn);
+                const searchQueries = await callApiWithFailover('google', queryGenFn, signal);
                 updateSearchQueriesUI(placeholderEl, searchQueries);
 
                 updateSearchStatus(placeholderEl, `Searching for ${searchQueries.length} topics...`);
                 
                 let allSearchResults = [];
                 for (const query of searchQueries) {
-                    const queryResults = await performFullSearchForQuery(query);
+                    const queryResults = await performFullSearchForQuery(query, signal);
                     allSearchResults.push(...queryResults);
-                    // Add a delay between different search queries
                     await new Promise(resolve => setTimeout(resolve, 500)); 
                 }
                 
@@ -3097,7 +3155,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
 
                 const fetchPromises = resultsToFetch.map(item =>
                     fetch(VPS_FETCHER_URL, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link })
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link }), signal
                     })
                     .then(res => res.ok ? res.json() : { content: '' })
                     .then(data => ({
@@ -3113,12 +3171,13 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 return { fetchedWebContext: allFetchedContent, sourcesForDisplay };
 
             } catch (error) {
+                if (error.name === 'AbortError') throw error;
                 console.error("Web Search process failed:", error);
                 return { isError: true, data: `❌ Web search process failed: ${error.message}` };
             }
         }
 
-        async function generateFactCheckerResponse(userMessage, placeholderEl) {
+        async function generateFactCheckerResponse(userMessage, placeholderEl, signal) {
             const selectedModel = models[appState.currentModel];
             displaySearchProcess(placeholderEl);
 
@@ -3135,7 +3194,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
                         : `You are a verification expert. Based on the user's prompt and gathered info, generate ${numQueries} new queries to verify facts and fill gaps. Output MUST be a JSON array of strings.`;
                     const queryGenPrompt = `USER PROMPT: "${userMessage.content}"\n\nPREVIOUSLY GATHERED INFO:\n${context}`;
                     
-                    const queryGenFn = async (apiKey) => {
+                    const queryGenFn = async (apiKey, localSignal) => {
                         const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
                                 contents: [{ role: 'user', parts: [{ text: queryGenPrompt }] }],
@@ -3146,7 +3205,8 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                     { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                     { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                                 ]
-                            })
+                            }),
+                            signal: localSignal
                         });
                         if (!response.ok) {
                            const errorBody = await response.text();
@@ -3171,12 +3231,12 @@ async function callApiWithFailover(apiType, apiCallFn) {
                         }
                         return queries.filter(q => q && q.trim().length > 0);
                     };
-                    const searchQueries = await callApiWithFailover('google', queryGenFn);
+                    const searchQueries = await callApiWithFailover('google', queryGenFn, signal);
                     updateSearchQueriesUI(placeholderEl, searchQueries);
                     
                     let searchResultsData = [];
                     for (const query of searchQueries) {
-                       searchResultsData.push(...await performFullSearchForQuery(query));
+                       searchResultsData.push(...await performFullSearchForQuery(query, signal));
                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                     
@@ -3188,7 +3248,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
 
                     const fetchPromises = resultsToFetch.map(item =>
                         fetch(VPS_FETCHER_URL, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link })
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.link }), signal
                         })
                         .then(res => res.ok ? res.json() : { content: '' })
                         .then(data => {
@@ -3213,10 +3273,10 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 const MAX_CONTEXT_LENGTH = 2000000;
                 const truncatedContent = allFetchedContent.join('\n').substring(0, MAX_CONTEXT_LENGTH);
 
-                const synthesisSystemPrompt = "You are an expert research analyst. Your goal is to synthesize information from multiple provided sources to answer the user's question comprehensively and accurately. Structure your response into 6 to 8 distinct, well-explained sections using markdown headings. Do not use any prior knowledge. If the sources do not contain the answer, state that clearly.";
+                const synthesisSystemPrompt = "You are an expert research analyst. Your goal is to synthesize information from multiple provided sources to answer the user's question comprehensively and accurately. Structure your response into 6 to 8 distinct, well-explained sections using markdown headings. Each section must be very detailed and be approximately 300 words long. Do not use any prior knowledge. If the sources do not contain the answer, state that clearly.";
                 const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Full Text from All Web Sources ---\n\n${truncatedContent}`;
 
-                const synthesisFn = async (apiKey) => {
+                const synthesisFn = async (apiKey, localSignal) => {
                      const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
@@ -3229,7 +3289,8 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ]
-                        })
+                        }),
+                        signal: localSignal
                     });
                     if (!response.ok) {
                         const errorBody = await response.text();
@@ -3240,43 +3301,43 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     return response.json();
                 };
 
-                const finalData = await callApiWithFailover('google', synthesisFn);
+                const finalData = await callApiWithFailover('google', synthesisFn, signal);
                 const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
                 
                 return { data: finalContent, sources: Array.from(allSources.values()) };
 
             } catch (error) {
+                if (error.name === 'AbortError') throw error;
                 console.error("Fact Checker Error:", error);
                 return { isError: true, data: `❌ Fact Checker process failed: ${error.message}` };
             }
         }
 
 
-        async function generateAIResponse(userMessage, placeholderEl) {
+        async function generateAIResponse(userMessage, placeholderEl, signal) {
             // Route to the correct function based on the mode
             if (appState.currentSection === 'fact-checker') {
-                return await generateFactCheckerResponse(userMessage, placeholderEl);
+                return await generateFactCheckerResponse(userMessage, placeholderEl, signal);
             }
 
             // Handle General mode (with or without search)
             if (appState.webSearchEnabled) {
                 const numQueries = 4;
-                const searchResult = await executeWebSearch(userMessage, placeholderEl, numQueries);
+                const searchResult = await executeWebSearch(userMessage, placeholderEl, numQueries, signal);
                 if (searchResult.isError) return searchResult;
 
                 updateSearchStatus(placeholderEl, 'Synthesizing final answer...');
                 const selectedModel = models[appState.currentModel];
                 const synthesisSystemPrompt = "You are an expert research assistant. Answer the user's query by synthesizing the information from the provided web sources into a comprehensive, well-written answer.";
                 
-                // Truncate the fetched web context to avoid exceeding token limits (approx 200k chars ~50k tokens, safe under 250k per-minute quota)
-                const maxContextLength = 200000; // Adjust as needed based on testing
+                const maxContextLength = 200000; 
                 const truncatedWebContext = searchResult.fetchedWebContext.length > maxContextLength 
                     ? searchResult.fetchedWebContext.substring(0, maxContextLength) + '\n\n[Context truncated to fit API limits]' 
                     : searchResult.fetchedWebContext;
                 
                 const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Text from Web Sources ---\n\n${truncatedWebContext}`;
 
-                const synthesisFn = async (apiKey) => {
+                const synthesisFn = async (apiKey, localSignal) => {
                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
@@ -3289,7 +3350,8 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ]
-                        })
+                        }),
+                        signal: localSignal
                     });
                     if (!response.ok) {
                         const errorBody = await response.text();
@@ -3301,15 +3363,15 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 };
                 let finalData;
                 try {
-                    finalData = await callApiWithFailover('google', synthesisFn);
+                    finalData = await callApiWithFailover('google', synthesisFn, signal);
                 } catch (error) {
-                    // Fallback to OpenRouter if all Google keys fail
+                    if (error.name === 'AbortError') throw error;
+                    
                     console.warn('All Google keys failed; falling back to OpenRouter.');
-                    // ❗️ IMPORTANT: Ensure API_CONFIG.openrouter.apiKey is replaced with your actual OpenRouter API key, not a placeholder
                     if (API_CONFIG.openrouter.apiKey.startsWith('AIzaSy')) {
                         throw new Error('Invalid OpenRouter API key detected. Please replace with a valid key.');
                     }
-                    const openRouterFn = async () => {
+                    const openRouterFn = async (apiKey, localSignal) => {
                         const response = await fetch(API_CONFIG.openrouter.apiUrl, {
                             method: 'POST',
                             headers: {
@@ -3317,21 +3379,22 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                 'Authorization': `Bearer ${API_CONFIG.openrouter.apiKey}`
                             },
                             body: JSON.stringify({
-                                model: 'openai/gpt-4o-mini', // Choose a suitable model; adjust as needed
+                                model: 'openai/gpt-4o-mini',
                                 messages: [
                                     { role: 'system', content: synthesisSystemPrompt },
                                     { role: 'user', content: finalUserMessage }
                                 ]
-                            })
+                            }),
+                            signal: localSignal
                         });
                         if (!response.ok) {
                             const errorBody = await response.text();
                             throw new Error(`OpenRouter fallback failed with status ${response.status}. Response: ${errorBody}`);
                         }
                         const data = await response.json();
-                        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] }; // Normalize to Google format
+                        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
                     };
-                    finalData = await openRouterFn();
+                    finalData = await openRouterFn(null, signal); // OpenRouter doesn't use failover keys, pass null
                 }
                 const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
                 return { data: finalContent, sources: searchResult.sourcesForDisplay };
@@ -3360,7 +3423,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     });
                 }
                 
-                const apiCallFn = async (apiKey) => {
+                const apiCallFn = async (apiKey, localSignal) => {
                     const contents = history.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
                     const currentUserMessageParts = [{ text: combinedUserContent }];
                     if (userMessage.files?.length > 0) {
@@ -3382,7 +3445,8 @@ async function callApiWithFailover(apiType, apiCallFn) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ]
-                        })
+                        }),
+                        signal: localSignal
                     });
                     if (!response.ok) {
                         const errorBody = await response.text();
@@ -3392,7 +3456,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     }
                     return response.json();
                 };
-                const data = await callApiWithFailover('google', apiCallFn);
+                const data = await callApiWithFailover('google', apiCallFn, signal);
                 const content = data.candidates?.[0].content?.parts?.map(p => p.text).join('') || "No content received.";
                 return { data: content, sources: [] };
             }
@@ -3578,5 +3642,3 @@ async function callApiWithFailover(apiType, apiCallFn) {
       </script>
 </body>
 </html>
-
-
