@@ -2993,6 +2993,8 @@
                 if (pageResults.items) {
                     results.push(...pageResults.items);
                 }
+                 // Add a delay between paged requests to the same query
+                if (i < MAX_PAGES - 1) await new Promise(resolve => setTimeout(resolve, 200));
             }
             return results;
         }
@@ -3048,8 +3050,14 @@
                 updateSearchQueriesUI(placeholderEl, searchQueries);
 
                 updateSearchStatus(placeholderEl, `Searching for ${searchQueries.length} topics...`);
-                const searchPromises = searchQueries.map(query => performFullSearchForQuery(query));
-                const allSearchResults = (await Promise.all(searchPromises)).flat();
+                
+                let allSearchResults = [];
+                for (const query of searchQueries) {
+                    const queryResults = await performFullSearchForQuery(query);
+                    allSearchResults.push(...queryResults);
+                    // Add a delay between different search queries
+                    await new Promise(resolve => setTimeout(resolve, 500)); 
+                }
                 
                 const uniqueResults = new Map();
                 allSearchResults.forEach(item => item && item.link && uniqueResults.set(item.link, item));
@@ -3129,9 +3137,12 @@
                     };
                     const searchQueries = await callApiWithFailover('google', queryGenFn);
                     updateSearchQueriesUI(placeholderEl, searchQueries);
-
-                    const searchPromises = searchQueries.map(query => performFullSearchForQuery(query));
-                    const searchResultsData = (await Promise.all(searchPromises)).flat();
+                    
+                    let searchResultsData = [];
+                    for (const query of searchQueries) {
+                       searchResultsData.push(...await performFullSearchForQuery(query));
+                       await new Promise(resolve => setTimeout(resolve, 500));
+                    }
                     
                     const stepUniqueResults = new Map();
                     searchResultsData.forEach(item => item && item.link && stepUniqueResults.set(item.link, item));
