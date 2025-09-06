@@ -2253,52 +2253,64 @@
         // END: UNIFIED API CONFIGURATION
         // -------------------------------------------------------------------
 
-        // --- START: Smart API Key Failover System ---
-        let currentGoogleApiKeyIndex = 0;
-        let currentSearchKeyIndex = 0;
+       // --- START: Smart API Key Failover System ---
+let currentGoogleApiKeyIndex = 0;
+let currentSearchKeyIndex = 0;
 
-        async function callApiWithFailover(apiType, apiCallFn) {
-            const isSearch = apiType === 'search';
-            const keys = isSearch ? API_CONFIG.google_search.keys : API_CONFIG.google.apiKeys;
-            let currentIndex = isSearch ? currentSearchKeyIndex : currentGoogleApiKeyIndex;
+async function callApiWithFailover(apiType, apiCallFn) {
+    const isSearch = apiType === 'search';
+    const keys = isSearch ? API_CONFIG.google_search.keys : API_CONFIG.google.apiKeys;
+    let currentIndex = isSearch ? currentSearchKeyIndex : currentGoogleApiKeyIndex;
 
-            if (currentIndex >= keys.length) {
-                throw new Error(`All available ${apiType} API keys have failed or exceeded their quota.`);
-            }
+    if (currentIndex >= keys.length) {
+        throw new Error(`All available ${apiType} API keys have failed or exceeded their quota.`);
+    }
 
-            const currentKey = keys[currentIndex];
+    const currentKey = keys[currentIndex];
 
-            try {
-                // Check for invalid placeholder keys before making the call
-                const keyToCheck = isSearch ? currentKey.apiKey : currentKey;
-                if (!keyToCheck || keyToCheck.startsWith("YOUR_")) {
-                     throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
-                }
-                
-                return await apiCallFn(currentKey);
+    try {
+        // Check for invalid placeholder keys before making the call
+        const keyToCheck = isSearch ? currentKey.apiKey : currentKey;
+        if (!keyToCheck || keyToCheck.startsWith("YOUR_")) {
+             throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
+        }
+        
+        return await apiCallFn(currentKey);
 
-            } catch (error) {
-                console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
-                
-                // Only switch keys on quota errors (HTTP 429) or specific API key errors
-                 const errorStatus = error.status;
-                if (errorStatus === 429 || errorStatus === 400) {
-                    
-                    if (isSearch) {
-                        currentSearchKeyIndex++;
-                    } else {
-                        currentGoogleApiKeyIndex++;
-                    }
-
-                    // Immediately retry with the next key
-                    return callApiWithFailover(apiType, apiCallFn);
-                }
-                
-                // For other types of errors, re-throw them
-                throw error;
+    } catch (error) {
+        console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
+        
+        // Extract status from error message if not directly available
+        let errorStatus = error.status;
+        if (!errorStatus && error.message) {
+            const statusMatch = error.message.match(/status (\d+)/);
+            if (statusMatch) {
+                errorStatus = parseInt(statusMatch[1], 10);
+            } else if (error.message.includes('429') || error.message.includes('Quota exceeded') || error.message.includes('RESOURCE_EXHAUSTED')) {
+                errorStatus = 429;
+            } else if (error.message.includes('400')) {
+                errorStatus = 400;
             }
         }
-        // --- END: Smart API Key Failover System ---
+        
+        // Only switch keys on quota errors (HTTP 429) or specific API key errors
+        if (errorStatus === 429 || errorStatus === 400) {
+            
+            if (isSearch) {
+                currentSearchKeyIndex++;
+            } else {
+                currentGoogleApiKeyIndex++;
+            }
+
+            // Immediately retry with the next key
+            return callApiWithFailover(apiType, apiCallFn);
+        }
+        
+        // For other types of errors, re-throw them
+        throw error;
+    }
+}
+// --- END: Smart API Key Failover System ---
 
 
         // Application State
@@ -3016,7 +3028,13 @@
                                 role: 'user', 
                                 parts: [{ text: userMessage.content }] 
                             }],
-                            systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
+                            systemInstruction: { parts: [{ text: queryGenSystemPrompt }] },
+                            safetySettings: [
+                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                            ]
                         })
                     });
                     if (!response.ok) {
@@ -3109,7 +3127,13 @@
                         const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
                             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
                                 contents: [{ role: 'user', parts: [{ text: queryGenPrompt }] }],
-                                systemInstruction: { parts: [{ text: queryGenSystemPrompt }] }
+                                systemInstruction: { parts: [{ text: queryGenSystemPrompt }] },
+                                safetySettings: [
+                                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                                ]
                             })
                         });
                         if (!response.ok) {
@@ -3186,7 +3210,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ role: 'user', parts: [{ text: finalUserMessage }] }],
-                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
+                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] },
+                            safetySettings: [
+                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                            ]
                         })
                     });
                     if (!response.ok) {
@@ -3233,7 +3263,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ role: 'user', parts: [{ text: finalUserMessage }] }],
-                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] }
+                            systemInstruction: { parts: [{ text: synthesisSystemPrompt }] },
+                            safetySettings: [
+                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                            ]
                         })
                     });
                     if (!response.ok) {
@@ -3285,7 +3321,16 @@
                     contents.push({ role: 'user', parts: currentUserMessageParts });
 
                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
-                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] }})
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ 
+                            contents, 
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            safetySettings: [
+                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                            ]
+                        })
                     });
                     if (!response.ok) {
                         const errorBody = await response.text();
