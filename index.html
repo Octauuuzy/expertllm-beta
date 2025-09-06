@@ -2253,7 +2253,7 @@
         // END: UNIFIED API CONFIGURATION
         // -------------------------------------------------------------------
 
-       // --- START: Smart API Key Failover System ---
+// --- START: Smart API Key Failover System ---
 let currentGoogleApiKeyIndex = 0;
 let currentSearchKeyIndex = 0;
 
@@ -2275,7 +2275,16 @@ async function callApiWithFailover(apiType, apiCallFn) {
              throw new Error(`Invalid or placeholder API key detected for ${apiType}.`);
         }
         
-        return await apiCallFn(currentKey);
+        const result = await apiCallFn(currentKey);
+        
+        // Rotate to next key after success for load balancing
+        if (isSearch) {
+            currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length;
+        } else {
+            currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length;
+        }
+        
+        return result;
 
     } catch (error) {
         console.warn(`API call with ${apiType} key index ${currentIndex} failed. Error:`, error.message);
@@ -2293,16 +2302,19 @@ async function callApiWithFailover(apiType, apiCallFn) {
             }
         }
         
+        console.log(`Detected error status: ${errorStatus}`); // Added logging for debugging
+        
         // Only switch keys on quota errors (HTTP 429) or specific API key errors
         if (errorStatus === 429 || errorStatus === 400) {
-            
             if (isSearch) {
-                currentSearchKeyIndex++;
+                currentSearchKeyIndex = (currentSearchKeyIndex + 1) % keys.length; // Cycle through keys
             } else {
-                currentGoogleApiKeyIndex++;
+                currentGoogleApiKeyIndex = (currentGoogleApiKeyIndex + 1) % keys.length; // Cycle through keys
+                // Add a delay for Gemini API to respect per-minute quotas
+                await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10-second delay on failover
             }
 
-            // Immediately retry with the next key
+            // Retry with the next key
             return callApiWithFailover(apiType, apiCallFn);
         }
         
@@ -3255,7 +3267,14 @@ async function callApiWithFailover(apiType, apiCallFn) {
                 updateSearchStatus(placeholderEl, 'Synthesizing final answer...');
                 const selectedModel = models[appState.currentModel];
                 const synthesisSystemPrompt = "You are an expert research assistant. Answer the user's query by synthesizing the information from the provided web sources into a comprehensive, well-written answer.";
-                const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Text from Web Sources ---\n\n${searchResult.fetchedWebContext}`;
+                
+                // Truncate the fetched web context to avoid exceeding token limits (approx 200k chars ~50k tokens, safe under 250k per-minute quota)
+                const maxContextLength = 200000; // Adjust as needed based on testing
+                const truncatedWebContext = searchResult.fetchedWebContext.length > maxContextLength 
+                    ? searchResult.fetchedWebContext.substring(0, maxContextLength) + '\n\n[Context truncated to fit API limits]' 
+                    : searchResult.fetchedWebContext;
+                
+                const finalUserMessage = `User Query: "${userMessage.content}"\n\n--- Text from Web Sources ---\n\n${truncatedWebContext}`;
 
                 const synthesisFn = async (apiKey) => {
                     const response = await fetch(getGoogleTextApiUrl(selectedModel.googleModelName, apiKey), {
@@ -3280,7 +3299,40 @@ async function callApiWithFailover(apiType, apiCallFn) {
                     }
                     return response.json();
                 };
-                const finalData = await callApiWithFailover('google', synthesisFn);
+                let finalData;
+                try {
+                    finalData = await callApiWithFailover('google', synthesisFn);
+                } catch (error) {
+                    // Fallback to OpenRouter if all Google keys fail
+                    console.warn('All Google keys failed; falling back to OpenRouter.');
+                    // ❗️ IMPORTANT: Ensure API_CONFIG.openrouter.apiKey is replaced with your actual OpenRouter API key, not a placeholder
+                    if (API_CONFIG.openrouter.apiKey.startsWith('AIzaSy')) {
+                        throw new Error('Invalid OpenRouter API key detected. Please replace with a valid key.');
+                    }
+                    const openRouterFn = async () => {
+                        const response = await fetch(API_CONFIG.openrouter.apiUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${API_CONFIG.openrouter.apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: 'openai/gpt-4o-mini', // Choose a suitable model; adjust as needed
+                                messages: [
+                                    { role: 'system', content: synthesisSystemPrompt },
+                                    { role: 'user', content: finalUserMessage }
+                                ]
+                            })
+                        });
+                        if (!response.ok) {
+                            const errorBody = await response.text();
+                            throw new Error(`OpenRouter fallback failed with status ${response.status}. Response: ${errorBody}`);
+                        }
+                        const data = await response.json();
+                        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] }; // Normalize to Google format
+                    };
+                    finalData = await openRouterFn();
+                }
                 const finalContent = finalData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Could not synthesize a final answer.";
                 return { data: finalContent, sources: searchResult.sourcesForDisplay };
             } else {
