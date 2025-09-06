@@ -2987,7 +2987,7 @@ async function callApiWithFailover(apiType, apiCallFn) {
         }
         
         function getResultsPerQuery() {
-            const results = appState.currentSection === 'fact-checker' ? 10 : 20;
+            const results = appState.currentSection === 'fact-checker' ? 15 : 20;
             console.log(`Current section: ${appState.currentSection}, results per query: ${results}`);
             return results;
         }
@@ -3578,4 +3578,5 @@ async function callApiWithFailover(apiType, apiCallFn) {
       </script>
 </body>
 </html>
+
 
